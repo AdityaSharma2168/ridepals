@@ -488,36 +488,18 @@ export default function Home() {
                 ))}
               </div>
             </div>
-
+            
             <div className="bg-white rounded-xl shadow-md p-4">
-              <h2 className="text-2xl font-bold mb-4">Bay Area Stats</h2>
-
-              <div className="grid grid-cols-2 gap-4">
-                <Card className="hover:shadow-md transition-all duration-300">
-                  <CardContent className="p-4 text-center">
-                    <h3 className="text-gray-500 text-sm mb-1">CO₂ Saved</h3>
-                    <p className="text-2xl font-bold text-green-600">3,240 kg</p>
-                  </CardContent>
-                </Card>
-                <Card className="hover:shadow-md transition-all duration-300">
-                  <CardContent className="p-4 text-center">
-                    <h3 className="text-gray-500 text-sm mb-1">Rides Shared</h3>
-                    <p className="text-2xl font-bold text-rose-600">8,582</p>
-                  </CardContent>
-                </Card>
-                <Card className="hover:shadow-md transition-all duration-300">
-                  <CardContent className="p-4 text-center">
-                    <h3 className="text-gray-500 text-sm mb-1">Active Students</h3>
-                    <p className="text-2xl font-bold text-blue-600">1,428</p>
-                  </CardContent>
-                </Card>
-                <Card className="hover:shadow-md transition-all duration-300">
-                  <CardContent className="p-4 text-center">
-                    <h3 className="text-gray-500 text-sm mb-1">Colleges</h3>
-                    <p className="text-2xl font-bold text-amber-600">12</p>
-                  </CardContent>
-                </Card>
-              </div>
+              <h2 className="text-2xl font-bold mb-4">Join Our Community</h2>
+              <p className="text-gray-600 mb-6">
+                Connect with students from your campus and share rides safely and affordably.
+              </p>
+              
+              <Link href="/auth/signup">
+                <Button className="w-full">
+                  Sign Up Now
+                </Button>
+              </Link>
             </div>
           </div>
         </div>

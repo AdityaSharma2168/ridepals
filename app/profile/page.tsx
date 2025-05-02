@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { User, Mail, School, Star, Upload } from "lucide-react"
+import { User, Mail, School, Star, Upload, BarChart } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -29,6 +29,7 @@ import {
   Check,
   Plus,
   Coffee,
+  Leaf,
 } from "lucide-react"
 import CollegeSelector from "@/components/college-selector"
 
@@ -40,6 +41,20 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [showStats, setShowStats] = useState(false)
+  
+  // User stats data
+  const userStats = {
+    co2Saved: 320, // kg
+    ridesShared: 28,
+    totalDistance: 432, // miles
+    ridesOffered: 18,
+    ridesBooked: 10,
+    favoritePitStop: "Boba Guys",
+    pitStopVisits: 12,
+    moneyEarned: 215, // dollars
+    moneySaved: 180, // dollars
+  }
   
   useEffect(() => {
     // Redirect if not authenticated
@@ -160,7 +175,72 @@ export default function ProfilePage() {
                     Rating: {userData?.average_rating?.toFixed(1) || "N/A"}
                   </span>
                 </div>
+                <div className="pt-4">
+                  <Button 
+                    variant="outline" 
+                    className="w-full flex items-center justify-center"
+                    onClick={() => setShowStats(!showStats)}
+                  >
+                    <BarChart className="h-4 w-4 mr-2" />
+                    {showStats ? "Hide Stats" : "View Stats"}
+                  </Button>
+                </div>
               </div>
+              
+              {/* Stats Section (conditionally displayed) */}
+              {showStats && (
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <h3 className="text-lg font-semibold mb-4">Your RidePals Stats</h3>
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-green-50 p-3 rounded-lg text-center">
+                        <Leaf className="h-5 w-5 mx-auto mb-1 text-green-600" />
+                        <h4 className="text-xs text-gray-500">CO₂ Saved</h4>
+                        <p className="text-xl font-bold text-green-600">{userStats.co2Saved} kg</p>
+                      </div>
+                      <div className="bg-blue-50 p-3 rounded-lg text-center">
+                        <Car className="h-5 w-5 mx-auto mb-1 text-blue-600" />
+                        <h4 className="text-xs text-gray-500">Rides Shared</h4>
+                        <p className="text-xl font-bold text-blue-600">{userStats.ridesShared}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Total Distance:</span>
+                        <span className="font-medium">{userStats.totalDistance} miles</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Rides Offered:</span>
+                        <span className="font-medium">{userStats.ridesOffered}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Rides Booked:</span>
+                        <span className="font-medium">{userStats.ridesBooked}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Favorite Pit Stop:</span>
+                        <span className="font-medium">{userStats.favoritePitStop}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Pit Stop Visits:</span>
+                        <span className="font-medium">{userStats.pitStopVisits}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-rose-50 p-3 rounded-lg text-center">
+                        <h4 className="text-xs text-gray-500">Money Earned</h4>
+                        <p className="text-xl font-bold text-rose-600">${userStats.moneyEarned}</p>
+                      </div>
+                      <div className="bg-amber-50 p-3 rounded-lg text-center">
+                        <h4 className="text-xs text-gray-500">Money Saved</h4>
+                        <p className="text-xl font-bold text-amber-600">${userStats.moneySaved}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
           
