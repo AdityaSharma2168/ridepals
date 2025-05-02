@@ -19,7 +19,6 @@ import {
   Share2,
   CreditCard,
 } from "lucide-react"
-import Navbar from "@/components/navbar"
 import RideMap from "@/components/ride-map"
 
 export default function RideDetailsPage() {
@@ -68,8 +67,6 @@ export default function RideDetailsPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <Navbar />
-
       <div className="container mx-auto px-4 py-8">
         <Button variant="ghost" className="mb-6 hover:bg-gray-100" onClick={() => router.back()}>
           <ArrowLeft className="mr-2 h-4 w-4" />

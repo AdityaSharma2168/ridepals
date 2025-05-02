@@ -2,162 +2,83 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
+import { Menu, X, User, Car, Bell, Map, Calendar, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/contexts/auth-context"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Menu, X, Bell, Car, Calendar, User, LogOut, MapPin } from "lucide-react"
-import Logo from "./logo"
-import CollegeSelector from "./college-selector"
-import { useCollege } from "@/contexts/college-context"
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
+  const { user, signOut } = useAuth()
   const pathname = usePathname()
-  const { selectedCollege } = useCollege()
-
-  // Handle scroll effect
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 10)
-    }
-
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
 
   // Close mobile menu when route changes
   useEffect(() => {
     setIsMenuOpen(false)
   }, [pathname])
 
-  const isActive = (path: string) => {
-    return pathname === path
-  }
-
   return (
-    <nav
-      className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? "bg-white/95 backdrop-blur-sm shadow-md" : "bg-white shadow-sm"}`}
-    >
+    <nav className="bg-white border-b sticky top-0 z-50">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Logo />
-
-          {/* College & Location Selector (Desktop) */}
-          <div className="hidden md:flex items-center space-x-2">
-            <CollegeSelector />
-            <div className="text-sm text-gray-500 flex items-center">
-              <MapPin className="h-3 w-3 mr-1" />
-              {selectedCollege.location}, CA
-            </div>
+          <div className="flex items-center">
+            <Link href="/" className="flex items-center">
+              <Image src="/ridepals-logo.png" alt="ridepals.ai" width={40} height={40} className="mr-2" />
+              <span className="text-xl font-bold text-rose-600">ridepals.ai</span>
+            </Link>
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            <Link
-              href="/find"
-              className={`text-gray-700 hover:text-rose-600 font-medium transition-colors relative ${
-                isActive("/find") ? "text-rose-600" : ""
-              }`}
-            >
+          {/* Desktop Nav */}
+          <div className="hidden md:flex items-center space-x-1">
+            <NavLink href="/find" active={pathname === "/find"}>
               Find a Ride
-              {isActive("/find") && (
-                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-rose-600 rounded-full"></span>
-              )}
-            </Link>
-            <Link
-              href="/offer"
-              className={`text-gray-700 hover:text-rose-600 font-medium transition-colors relative ${
-                isActive("/offer") ? "text-rose-600" : ""
-              }`}
-            >
+            </NavLink>
+            <NavLink href="/offer" active={pathname === "/offer"}>
               Offer a Ride
-              {isActive("/offer") && (
-                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-rose-600 rounded-full"></span>
-              )}
-            </Link>
-            <Link
-              href="/recurring"
-              className={`text-gray-700 hover:text-rose-600 font-medium transition-colors relative ${
-                isActive("/recurring") ? "text-rose-600" : ""
-              }`}
-            >
-              Recurring Rides
-              {isActive("/recurring") && (
-                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-rose-600 rounded-full"></span>
-              )}
-            </Link>
-            <Link
-              href="/pitstops"
-              className={`text-gray-700 hover:text-rose-600 font-medium transition-colors relative ${
-                isActive("/pitstops") ? "text-rose-600" : ""
-              }`}
-            >
+            </NavLink>
+            <NavLink href="/my-rides" active={pathname === "/my-rides"}>
+              My Rides
+            </NavLink>
+            <NavLink href="/pitstops" active={pathname === "/pitstops"}>
               Pit Stops
-              {isActive("/pitstops") && (
-                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-rose-600 rounded-full"></span>
-              )}
-            </Link>
+            </NavLink>
+            <NavLink href="/recurring" active={pathname === "/recurring"}>
+              Recurring
+            </NavLink>
+            <NavLink href="/auth/test" active={pathname === "/auth/test"}>
+              Auth Test
+            </NavLink>
           </div>
 
-          {/* User Menu */}
-          <div className="hidden md:flex items-center space-x-4">
-            <Button variant="ghost" size="icon" className="relative hover:bg-gray-100">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-0 right-0 h-2 w-2 bg-rose-500 rounded-full"></span>
-            </Button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center space-x-2 hover:bg-gray-100">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src="/placeholder.svg?height=32&width=32" alt="User" />
-                    <AvatarFallback>ST</AvatarFallback>
-                  </Avatar>
-                  <span className="font-medium">Sam</span>
+          {/* User Menu (Desktop) */}
+          <div className="hidden md:flex items-center">
+            {user ? (
+              <UserDropdownMenu user={user} signOut={signOut} />
+            ) : (
+              <Link href="/auth/login">
+                <Button size="sm" variant="outline" className="mr-2">
+                  Sign In
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <Link href="/profile">
-                  <DropdownMenuItem>
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
-                  </DropdownMenuItem>
-                </Link>
-                <Link href="/my-rides">
-                  <DropdownMenuItem>
-                    <Car className="mr-2 h-4 w-4" />
-                    <span>My Rides</span>
-                  </DropdownMenuItem>
-                </Link>
-                <Link href="/recurring">
-                  <DropdownMenuItem>
-                    <Calendar className="mr-2 h-4 w-4" />
-                    <span>Recurring Rides</span>
-                  </DropdownMenuItem>
-                </Link>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-red-600">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </Link>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="md:hidden">
-            <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </Button>
+          <div className="md:hidden flex items-center">
+            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-gray-500 hover:text-gray-700">
+              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
           </div>
         </div>
       </div>
@@ -165,70 +86,142 @@ export default function Navbar() {
       {/* Mobile Menu */}
       {isMenuOpen && (
         <div className="md:hidden bg-white border-t">
-          <div className="container mx-auto px-4 py-3 space-y-3">
-            {/* College Selector (Mobile) */}
-            <div className="py-2">
-              <CollegeSelector className="w-full" />
-              <div className="text-sm text-gray-500 flex items-center mt-2">
-                <MapPin className="h-3 w-3 mr-1" />
-                {selectedCollege.location}, CA
-              </div>
-            </div>
+          <div className="container mx-auto px-4 py-2">
+            <MobileNavLink href="/find" active={pathname === "/find"}>
+              Find a Ride
+            </MobileNavLink>
+            <MobileNavLink href="/offer" active={pathname === "/offer"}>
+              Offer a Ride
+            </MobileNavLink>
+            <MobileNavLink href="/my-rides" active={pathname === "/my-rides"}>
+              My Rides
+            </MobileNavLink>
+            <MobileNavLink href="/pitstops" active={pathname === "/pitstops"}>
+              Pit Stops
+            </MobileNavLink>
+            <MobileNavLink href="/recurring" active={pathname === "/recurring"}>
+              Recurring
+            </MobileNavLink>
+            <MobileNavLink href="/auth/test" active={pathname === "/auth/test"}>
+              Auth Test
+            </MobileNavLink>
 
-            <div className="border-t pt-2">
-              <Link
-                href="/find"
-                className={`block py-2 px-3 rounded-md hover:bg-gray-100 ${isActive("/find") ? "text-rose-600 bg-rose-50" : ""}`}
-              >
-                Find a Ride
-              </Link>
-              <Link
-                href="/offer"
-                className={`block py-2 px-3 rounded-md hover:bg-gray-100 ${isActive("/offer") ? "text-rose-600 bg-rose-50" : ""}`}
-              >
-                Offer a Ride
-              </Link>
-              <Link
-                href="/recurring"
-                className={`block py-2 px-3 rounded-md hover:bg-gray-100 ${isActive("/recurring") ? "text-rose-600 bg-rose-50" : ""}`}
-              >
-                Recurring Rides
-              </Link>
-              <Link
-                href="/pitstops"
-                className={`block py-2 px-3 rounded-md hover:bg-gray-100 ${isActive("/pitstops") ? "text-rose-600 bg-rose-50" : ""}`}
-              >
-                Pit Stops
-              </Link>
-            </div>
-
-            <div className="pt-2 border-t">
-              <div className="flex items-center py-2 px-3">
-                <Avatar className="h-8 w-8 mr-3">
-                  <AvatarImage src="/placeholder.svg?height=32&width=32" alt="User" />
-                  <AvatarFallback>ST</AvatarFallback>
-                </Avatar>
-                <span className="font-medium">Sam Taylor</span>
+            {user ? (
+              <div className="py-2">
+                <div className="flex items-center py-2 px-4">
+                  <Avatar className="h-8 w-8 mr-2">
+                    <AvatarImage src={user.photoURL || ""} alt={user.displayName || "User"} />
+                    <AvatarFallback>{user.displayName?.[0] || user.email?.[0] || "U"}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{user.displayName || user.email?.split("@")[0]}</p>
+                    <p className="text-xs text-gray-500">{user.email}</p>
+                  </div>
+                </div>
+                <div className="border-t"></div>
+                <button
+                  onClick={() => signOut()}
+                  className="flex items-center py-2 px-4 w-full text-left text-red-600 hover:bg-red-50"
+                >
+                  <LogOut size={18} className="mr-2" />
+                  Sign Out
+                </button>
               </div>
-              <Link
-                href="/profile"
-                className={`block py-2 px-3 rounded-md hover:bg-gray-100 ${isActive("/profile") ? "text-rose-600 bg-rose-50" : ""}`}
-              >
-                Profile
-              </Link>
-              <Link
-                href="/my-rides"
-                className={`block py-2 px-3 rounded-md hover:bg-gray-100 ${isActive("/my-rides") ? "text-rose-600 bg-rose-50" : ""}`}
-              >
-                My Rides
-              </Link>
-              <Link href="/logout" className="block py-2 px-3 rounded-md text-red-600 hover:bg-gray-100">
-                Log out
-              </Link>
-            </div>
+            ) : (
+              <div className="py-2 px-4">
+                <Link href="/auth/login">
+                  <Button size="sm" className="w-full mb-2">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href="/auth/signup">
+                  <Button size="sm" variant="outline" className="w-full">
+                    Sign Up
+                  </Button>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       )}
     </nav>
+  )
+}
+
+// User Dropdown Menu Component
+function UserDropdownMenu({ user, signOut }: { user: any; signOut: () => Promise<void> }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="flex items-center rounded-full hover:bg-gray-100 p-1 transition-colors duration-200">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={user.photoURL || ""} alt={user.displayName || "User"} />
+            <AvatarFallback>{user.displayName?.[0] || user.email?.[0] || "U"}</AvatarFallback>
+          </Avatar>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel>
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium">{user.displayName || user.email?.split("@")[0]}</p>
+            <p className="text-xs font-normal text-gray-500">{user.email}</p>
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <Link href="/profile">
+            <DropdownMenuItem>
+              <User className="mr-2 h-4 w-4" />
+              <span>Profile</span>
+            </DropdownMenuItem>
+          </Link>
+          <Link href="/my-rides">
+            <DropdownMenuItem>
+              <Car className="mr-2 h-4 w-4" />
+              <span>My Rides</span>
+            </DropdownMenuItem>
+          </Link>
+          <Link href="/recurring">
+            <DropdownMenuItem>
+              <Calendar className="mr-2 h-4 w-4" />
+              <span>Recurring Rides</span>
+            </DropdownMenuItem>
+          </Link>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => signOut()} className="text-red-600 focus:bg-red-50 focus:text-red-600">
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Sign out</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+// Navigation Link Component
+function NavLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+        active ? "text-rose-600 bg-rose-50" : "text-gray-700 hover:text-rose-600 hover:bg-gray-50"
+      }`}
+    >
+      {children}
+    </Link>
+  )
+}
+
+// Mobile Navigation Link Component
+function MobileNavLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className={`block py-2 px-4 rounded-md text-base font-medium ${
+        active ? "text-rose-600 bg-rose-50" : "text-gray-700 hover:text-rose-600 hover:bg-gray-50"
+      }`}
+    >
+      {children}
+    </Link>
   )
 }

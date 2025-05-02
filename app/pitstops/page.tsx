@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -8,11 +8,21 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Star, Search, MapPin, Clock, Coffee, Utensils, ShoppingBag } from "lucide-react"
-import Navbar from "@/components/navbar"
+import { useAuth } from "@/contexts/auth-context"
+import { useRouter } from "next/navigation"
 
 export default function PitStopsPage() {
   const [activeTab, setActiveTab] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
+  const { user, loading: authLoading } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    // Redirect if not authenticated
+    if (!authLoading && !user) {
+      router.push('/auth/login?callbackUrl=/pitstops')
+    }
+  }, [user, authLoading, router])
 
   const categories = [
     { id: "all", label: "All", icon: Coffee },
@@ -76,10 +86,22 @@ export default function PitStopsPage() {
 
   const [selectedPitStop, setSelectedPitStop] = useState<number | null>(null)
 
+  // Show loading indicator if auth check is in progress
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-rose-500"></div>
+      </div>
+    );
+  }
+
+  // Don't render content if not authenticated (will redirect via useEffect)
+  if (!user) {
+    return null;
+  }
+
   return (
     <main className="min-h-screen bg-gray-50">
-      <Navbar />
-
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">Pit Stops</h1>
 
@@ -145,7 +167,6 @@ export default function PitStopsPage() {
                           <Button variant="outline" size="sm">
                             View Menu
                           </Button>
-                          <Button size="sm">Add to Ride</Button>
                         </div>
                       </div>
                     )}

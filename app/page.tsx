@@ -12,9 +12,8 @@ import { MapPin, Calendar, Clock, Users, Coffee, Star, ChevronRight, Search, Che
 import RideMap from "@/components/ride-map"
 import PitStopCard from "@/components/pit-stop-card"
 import RecurringRideCard from "@/components/recurring-ride-card"
-import Navbar from "@/components/navbar"
 import CollegeSelector from "@/components/college-selector"
-import { useCollege } from "@/contexts/college-context"
+import { useCollege, type College } from "@/contexts/college-context"
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("available")
@@ -27,14 +26,14 @@ export default function Home() {
   const getPitStops = () => {
     return [
       {
-        name: `${selectedCollege.location} Boba`,
+        name: `${selectedCollege?.location || 'Local'} Boba`,
         image: "/placeholder.svg?height=80&width=80",
         discount: "10% off",
         rating: 4.8,
         category: "Bubble Tea",
       },
       {
-        name: `${selectedCollege.abbreviation} Café`,
+        name: `${selectedCollege?.abbreviation || 'Campus'} Café`,
         image: "/placeholder.svg?height=80&width=80",
         discount: "Free cookie with purchase",
         rating: 4.6,
@@ -57,8 +56,6 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <Navbar />
-
       {/* Success notification */}
       {showBookingSuccess && (
         <div className="fixed top-20 right-4 bg-green-100 border border-green-200 text-green-800 px-4 py-3 rounded-lg shadow-md flex items-center z-50 animate-in slide-in-from-top">
@@ -144,7 +141,7 @@ export default function Home() {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
                   <input
                     type="text"
-                    placeholder={`Where to in ${selectedCollege.location}?`}
+                    placeholder={`Where to in ${selectedCollege?.location || 'your area'}?`}
                     className="w-full pl-10 pr-4 py-2 border rounded-full focus:outline-none focus:border-rose-500"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -154,8 +151,42 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="h-[400px] rounded-lg overflow-hidden mb-4">
-                <RideMap />
+              <div className="bg-gray-100 rounded-lg p-6 mb-4">
+                <div className="text-center mb-6">
+                  <h3 className="text-lg font-semibold mb-2">Quick Search</h3>
+                  <p className="text-gray-600">Enter your starting point to find rides near you</p>
+                </div>
+                
+                <div className="flex flex-col md:flex-row gap-4 mb-4">
+                  <div className="flex-1 relative">
+                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                    <input
+                      type="text"
+                      placeholder="Starting point (address, landmark, etc.)"
+                      className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:border-rose-500"
+                    />
+                  </div>
+                  
+                  <div className="relative w-full md:w-auto">
+                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                    <input 
+                      type="date"
+                      className="w-full md:w-40 pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:border-rose-500"
+                    />
+                  </div>
+                  
+                  <Button className="h-auto">
+                    <Search className="h-4 w-4 mr-2" />
+                    Search
+                  </Button>
+                </div>
+                
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="cursor-pointer hover:bg-gray-100">Downtown</Badge>
+                  <Badge variant="outline" className="cursor-pointer hover:bg-gray-100">Campus Center</Badge>
+                  <Badge variant="outline" className="cursor-pointer hover:bg-gray-100">Shopping Mall</Badge>
+                  <Badge variant="outline" className="cursor-pointer hover:bg-gray-100">Train Station</Badge>
+                </div>
               </div>
 
               <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -183,7 +214,7 @@ export default function Home() {
                                 <span>4.9</span>
                                 <Badge variant="outline" className="ml-2 flex items-center">
                                   <School className="h-3 w-3 mr-1" />
-                                  {selectedCollege.abbreviation}
+                                  {selectedCollege?.abbreviation}
                                 </Badge>
                               </div>
                             </div>
@@ -195,7 +226,7 @@ export default function Home() {
                               <MapPin className="h-4 w-4 text-gray-400 mr-2" />
                               <div>
                                 <div className="font-medium">
-                                  {selectedCollege.abbreviation} Dorms → {selectedCollege.location} Downtown
+                                  {selectedCollege?.abbreviation} Dorms → {selectedCollege?.location || 'Downtown'}
                                 </div>
                                 <div className="text-gray-500">3.2 miles • 12 min</div>
                               </div>
@@ -210,7 +241,7 @@ export default function Home() {
                             </div>
                             <div className="flex items-center text-sm">
                               <Coffee className="h-4 w-4 text-gray-400 mr-2" />
-                              <span className="text-rose-600">Pit stop: {selectedCollege.location} Boba (10% off)</span>
+                              <span className="text-rose-600">Pit stop: {selectedCollege?.location || 'Local'} Boba (10% off)</span>
                             </div>
                           </div>
 
@@ -240,7 +271,7 @@ export default function Home() {
                                 <span>4.7</span>
                                 <Badge variant="outline" className="ml-2 flex items-center">
                                   <School className="h-3 w-3 mr-1" />
-                                  {selectedCollege.abbreviation}
+                                  {selectedCollege?.abbreviation}
                                 </Badge>
                               </div>
                             </div>
@@ -251,7 +282,7 @@ export default function Home() {
                             <div className="flex items-center text-sm">
                               <MapPin className="h-4 w-4 text-gray-400 mr-2" />
                               <div>
-                                <div className="font-medium">{selectedCollege.abbreviation} Campus → Trader Joe's</div>
+                                <div className="font-medium">{selectedCollege?.abbreviation} Campus → Trader Joe's</div>
                                 <div className="text-gray-500">2.8 miles • 10 min</div>
                               </div>
                             </div>
@@ -277,9 +308,9 @@ export default function Home() {
                 </TabsContent>
 
                 <TabsContent value="intercampus" className="space-y-4">
-                  {nearbyColleges.length > 0 ? (
-                    nearbyColleges.slice(0, 2).map((college, index) => (
-                      <Card key={index} className="overflow-hidden hover:shadow-md transition-all duration-300">
+                  {nearbyColleges?.length > 0 ? (
+                    nearbyColleges.slice(0, 2).map((college: College, index: number) => (
+                      <Card key={college.id} className="overflow-hidden hover:shadow-md transition-all duration-300">
                         <CardContent className="p-4">
                           <div className="flex items-start gap-4">
                             <Avatar className="h-12 w-12">
@@ -307,7 +338,7 @@ export default function Home() {
                                   <MapPin className="h-4 w-4 text-gray-400 mr-2" />
                                   <div>
                                     <div className="font-medium">
-                                      {college.abbreviation} → {selectedCollege.abbreviation}
+                                      {college.abbreviation} → {selectedCollege?.abbreviation || 'Campus'}
                                     </div>
                                     <div className="text-gray-500">Intercampus • {30 + index * 5} min</div>
                                   </div>
@@ -353,16 +384,16 @@ export default function Home() {
                   <div className="space-y-4">
                     <RecurringRideCard
                       driver="Alex W."
-                      route={`${selectedCollege.abbreviation} → ${selectedCollege.location} Downtown`}
+                      route={`${selectedCollege?.abbreviation || 'Campus'} → ${selectedCollege?.location || 'Downtown'}`}
                       schedule="MWF at 5:30 PM"
                       price={4}
-                      pitStop={`${selectedCollege.location} Boba`}
+                      pitStop={`${selectedCollege?.location || 'Local'} Boba`}
                       seats={2}
                     />
                     {nearbyColleges.length > 0 && (
                       <RecurringRideCard
                         driver="Sarah L."
-                        route={`${selectedCollege.abbreviation} → ${nearbyColleges[0].abbreviation}`}
+                        route={`${selectedCollege?.abbreviation || 'Campus'} → ${nearbyColleges[0].abbreviation}`}
                         schedule="TTh at 8:00 AM"
                         price={12}
                         pitStop="Philz Coffee"
@@ -398,7 +429,7 @@ export default function Home() {
                                 <MapPin className="h-4 w-4 text-gray-400 mr-2" />
                                 <div>
                                   <div className="font-medium">
-                                    {selectedCollege.abbreviation} →{" "}
+                                    {selectedCollege?.abbreviation || 'Campus'} →{" "}
                                     {nearbyColleges.length > 0 ? nearbyColleges[0].abbreviation : "Downtown"}
                                   </div>
                                   <div className="text-gray-500">Intercampus • 35 min</div>

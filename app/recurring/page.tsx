@@ -1,24 +1,138 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { MapPin, Clock, Users, Coffee, Car, Plus, Edit, Trash2 } from "lucide-react"
-import Navbar from "@/components/navbar"
+import { MapPin, Clock, Users, Coffee, Car, Plus, Edit, Trash2, Calendar } from "lucide-react"
 import RideMap from "@/components/ride-map"
+import { useCollege } from "@/contexts/college-context"
+import { useAuth } from "@/contexts/auth-context"
+import { useRouter } from "next/navigation"
+
+// Type for recurring ride
+type RecurringRide = {
+  id: string
+  from_location: string
+  to_location: string
+  departure_time: string
+  seats_available: number
+  price_per_seat: number
+  description?: string
+  status: string
+  is_intercampus: boolean
+  is_recurring: boolean
+  recurring_days: string[]
+  created_at: string
+}
 
 export default function RecurringRidesPage() {
   const [activeTab, setActiveTab] = useState("my-rides")
   const [showNewRideForm, setShowNewRideForm] = useState(false)
+  const [recurringRides, setRecurringRides] = useState<RecurringRide[]>([])
+  const [loading, setLoading] = useState(true)
+  const { selectedCollege } = useCollege()
+  const { user, loading: authLoading } = useAuth()
+  const router = useRouter()
+
+  // Check authentication and load recurring rides
+  useEffect(() => {
+    // Redirect if not authenticated
+    if (!authLoading && !user) {
+      router.push('/auth/login?callbackUrl=/recurring')
+      return
+    }
+    
+    // If user is authenticated, load recurring rides
+    if (user) {
+      loadRecurringRides()
+    }
+  }, [user, authLoading, router])
+
+  // Load recurring rides from localStorage
+  const loadRecurringRides = () => {
+    setLoading(true)
+    try {
+      if (typeof window !== 'undefined') {
+        // Debug logging
+        console.log("All localStorage keys:", Object.keys(localStorage))
+        
+        const storedRidesJSON = localStorage.getItem('recurringRides')
+        console.log("Raw recurring rides data:", storedRidesJSON)
+        
+        if (storedRidesJSON) {
+          const storedRides = JSON.parse(storedRidesJSON)
+          console.log("Loaded recurring rides:", storedRides)
+          setRecurringRides(storedRides)
+        } else {
+          console.log("No recurring rides found in localStorage")
+          setRecurringRides([])
+        }
+      }
+    } catch (error) {
+      console.error("Error loading recurring rides:", error)
+      setRecurringRides([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Format a readable schedule from recurring days
+  const formatSchedule = (days: string[]) => {
+    if (!days || days.length === 0) return "Not specified"
+    
+    if (days.length === 7) return "Every day"
+    if (days.length === 5 && 
+        days.includes("Mon") && days.includes("Tue") && days.includes("Wed") &&
+        days.includes("Thu") && days.includes("Fri")) 
+      return "Every weekday"
+    
+    // Format as list of abbreviated days
+    return days.map(day => day.substring(0, 1)).join(", ")
+  }
+
+  // Format time from ISO string
+  const formatTime = (isoString: string) => {
+    try {
+      const date = new Date(isoString)
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    } catch {
+      return "Invalid time"
+    }
+  }
+
+  const handleDeleteRide = (id: string) => {
+    if (confirm("Are you sure you want to delete this recurring ride?")) {
+      try {
+        const updatedRides = recurringRides.filter(ride => ride.id !== id)
+        setRecurringRides(updatedRides)
+        localStorage.setItem('recurringRides', JSON.stringify(updatedRides))
+      } catch (error) {
+        console.error("Error deleting ride:", error)
+        alert("Failed to delete the ride. Please try again.")
+      }
+    }
+  }
+
+  // Show loading indicator if auth check is in progress
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-rose-500"></div>
+      </div>
+    );
+  }
+
+  // Don't render content if not authenticated (will redirect via useEffect)
+  if (!user) {
+    return null;
+  }
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <Navbar />
-
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Recurring Rides</h1>
@@ -82,38 +196,30 @@ export default function RecurringRidesPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="seats">Available Seats</Label>
-                        <div className="relative mt-1">
-                          <Users
-                            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                            size={18}
-                          />
-                          <select
-                            id="seats"
-                            className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-rose-500"
-                          >
-                            <option>1 seat</option>
-                            <option>2 seats</option>
-                            <option>3 seats</option>
-                            <option>4 seats</option>
-                          </select>
-                        </div>
+                    <div>
+                      <Label htmlFor="seats">Available Seats</Label>
+                      <div className="relative mt-1">
+                        <Users
+                          className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                          size={18}
+                        />
+                        <select
+                          id="seats"
+                          className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-rose-500"
+                        >
+                          <option>1 seat</option>
+                          <option>2 seats</option>
+                          <option>3 seats</option>
+                          <option>4 seats</option>
+                        </select>
                       </div>
+                    </div>
 
-                      <div>
-                        <Label htmlFor="vehicle">Vehicle</Label>
-                        <div className="relative mt-1">
-                          <Car className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                          <select
-                            id="vehicle"
-                            className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-rose-500"
-                          >
-                            <option>Toyota Prius (Blue)</option>
-                            <option>Add New Vehicle</option>
-                          </select>
-                        </div>
+                    <div>
+                      <Label htmlFor="car">Vehicle</Label>
+                      <div className="relative mt-1">
+                        <Car className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                        <Input id="car" placeholder="Toyota Prius (Blue)" className="pl-10" />
                       </div>
                     </div>
 
@@ -155,7 +261,7 @@ export default function RecurringRidesPage() {
                 </Button>
                 <Button
                   onClick={() => {
-                    alert("Recurring ride created!")
+                    alert("Please use the Offer a Ride page to create recurring rides.")
                     setShowNewRideForm(false)
                   }}
                 >
@@ -174,186 +280,127 @@ export default function RecurringRidesPage() {
           </TabsList>
 
           <TabsContent value="my-rides">
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="font-semibold">EVGR → Main Campus</h3>
-                      <div className="text-sm text-gray-500">Every MWF at 8:30 AM</div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="icon" variant="outline">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button size="icon" variant="outline" className="text-red-500">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
+            {loading ? (
+              <div className="text-center py-8">
+                <p>Loading your recurring rides...</p>
+              </div>
+            ) : recurringRides.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+                  <Calendar className="h-6 w-6 text-gray-500" />
+                </div>
+                <h3 className="text-lg font-medium mb-2">No recurring rides yet</h3>
+                <p className="text-gray-500 mb-4">Create a recurring ride by checking the "Make this a recurring ride" option when offering a ride.</p>
+                <Button onClick={() => window.location.href = "/offer"}>
+                  Offer a Ride
+                </Button>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 gap-6">
+                {recurringRides.map((ride) => (
+                  <Card key={ride.id}>
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h3 className="font-semibold">{ride.from_location} → {ride.to_location}</h3>
+                          <div className="text-sm text-gray-500">
+                            {formatSchedule(ride.recurring_days)} at {formatTime(ride.departure_time)}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="icon" variant="outline">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="icon" 
+                            variant="outline" 
+                            className="text-red-500"
+                            onClick={() => handleDeleteRide(ride.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
 
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center text-sm">
-                      <MapPin className="h-4 w-4 text-gray-400 mr-2" />
-                      <span>EVGR Building A → Main Quad</span>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <Users className="h-4 w-4 text-gray-400 mr-2" />
-                      <span>3 seats available</span>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <Car className="h-4 w-4 text-gray-400 mr-2" />
-                      <span>Toyota Prius (Blue)</span>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center">
-                    <div className="text-sm text-gray-500">2 subscribers</div>
-                    <Button size="sm">View Details</Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="font-semibold">Campus → Downtown Palo Alto</h3>
-                      <div className="text-sm text-gray-500">Every Friday at 5:30 PM</div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="icon" variant="outline">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button size="icon" variant="outline" className="text-red-500">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center text-sm">
-                      <MapPin className="h-4 w-4 text-gray-400 mr-2" />
-                      <span>Tresidder Union → University Avenue</span>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <Users className="h-4 w-4 text-gray-400 mr-2" />
-                      <span>2 seats available</span>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <Coffee className="h-4 w-4 text-gray-400 mr-2" />
-                      <span className="text-rose-600">Pit stop: Boba Guys (10% off)</span>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center">
-                    <div className="text-sm text-gray-500">3 subscribers</div>
-                    <Button size="sm">View Details</Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center text-sm">
+                          <MapPin className="h-4 w-4 text-gray-400 mr-2" />
+                          <span>{ride.description || `${ride.from_location} → ${ride.to_location}`}</span>
+                        </div>
+                        <div className="flex items-center text-sm">
+                          <Users className="h-4 w-4 text-gray-400 mr-2" />
+                          <span>{ride.seats_available} seats available</span>
+                        </div>
+                        <div className="flex items-center text-sm">
+                          <Clock className="h-4 w-4 text-gray-400 mr-2" />
+                          <span>${ride.price_per_seat.toFixed(2)} per seat</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="subscribed">
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="font-semibold">Campus → Trader Joe's</h3>
-                      <div className="text-sm text-gray-500">Every Saturday at 2:00 PM</div>
-                      <div className="text-sm font-medium mt-1">Driver: Michael T.</div>
-                    </div>
-                    <Button size="sm" variant="outline" className="text-red-500">
-                      Unsubscribe
-                    </Button>
-                  </div>
-
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center text-sm">
-                      <MapPin className="h-4 w-4 text-gray-400 mr-2" />
-                      <span>Tresidder Union → Trader Joe's</span>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <Users className="h-4 w-4 text-gray-400 mr-2" />
-                      <span>4 seats total (3 subscribers)</span>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <Button size="sm">View Details</Button>
-                  </div>
-                </CardContent>
-              </Card>
+            <div className="text-center py-8">
+              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+                <Calendar className="h-6 w-6 text-gray-500" />
+              </div>
+              <h3 className="text-lg font-medium mb-2">No subscriptions yet</h3>
+              <p className="text-gray-500 mb-4">You haven't subscribed to any recurring rides.</p>
+              <Button onClick={() => setActiveTab("browse")}>
+                Browse Recurring Rides
+              </Button>
             </div>
           </TabsContent>
 
           <TabsContent value="browse">
             <div className="grid md:grid-cols-2 gap-6">
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="font-semibold">EVGR → Downtown Palo Alto</h3>
-                      <div className="text-sm text-gray-500">Every MWF at 5:30 PM</div>
-                      <div className="text-sm font-medium mt-1">Driver: Alex W.</div>
-                    </div>
-                    <div className="font-bold">$4/ride</div>
+              {recurringRides.length === 0 ? (
+                <div className="md:col-span-2 text-center py-8">
+                  <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+                    <Calendar className="h-6 w-6 text-gray-500" />
                   </div>
+                  <h3 className="text-lg font-medium mb-2">No recurring rides available</h3>
+                  <p className="text-gray-500 mb-4">No one has created recurring rides yet.</p>
+                </div>
+              ) : (
+                recurringRides.map((ride) => (
+                  <Card key={ride.id}>
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h3 className="font-semibold">{ride.from_location} → {ride.to_location}</h3>
+                          <div className="text-sm text-gray-500">
+                            {formatSchedule(ride.recurring_days)} at {formatTime(ride.departure_time)}
+                          </div>
+                        </div>
+                      </div>
 
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center text-sm">
-                      <MapPin className="h-4 w-4 text-gray-400 mr-2" />
-                      <span>EVGR Building B → University Avenue</span>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <Users className="h-4 w-4 text-gray-400 mr-2" />
-                      <span>2 seats available</span>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <Coffee className="h-4 w-4 text-gray-400 mr-2" />
-                      <span className="text-rose-600">Pit stop: Boba Guys (10% off)</span>
-                    </div>
-                  </div>
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center text-sm">
+                          <MapPin className="h-4 w-4 text-gray-400 mr-2" />
+                          <span>{ride.description || `${ride.from_location} → ${ride.to_location}`}</span>
+                        </div>
+                        <div className="flex items-center text-sm">
+                          <Users className="h-4 w-4 text-gray-400 mr-2" />
+                          <span>{ride.seats_available} seats available</span>
+                        </div>
+                        <div className="flex items-center text-sm">
+                          <Clock className="h-4 w-4 text-gray-400 mr-2" />
+                          <span>${ride.price_per_seat.toFixed(2)} per seat</span>
+                        </div>
+                      </div>
 
-                  <div className="flex justify-end">
-                    <Button size="sm">Subscribe</Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="font-semibold">Campus → Stanford Shopping Center</h3>
-                      <div className="text-sm text-gray-500">Every Saturday at 1:00 PM</div>
-                      <div className="text-sm font-medium mt-1">Driver: Jessica S.</div>
-                    </div>
-                    <div className="font-bold">$5/ride</div>
-                  </div>
-
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center text-sm">
-                      <MapPin className="h-4 w-4 text-gray-400 mr-2" />
-                      <span>Main Quad → Stanford Shopping Center</span>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <Users className="h-4 w-4 text-gray-400 mr-2" />
-                      <span>3 seats available</span>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <Coffee className="h-4 w-4 text-gray-400 mr-2" />
-                      <span className="text-rose-600">Pit stop: Coupa Café (Free cookie)</span>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <Button size="sm">Subscribe</Button>
-                  </div>
-                </CardContent>
-              </Card>
+                      <div className="flex justify-end items-center">
+                        <Button size="sm">Subscribe</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </div>
           </TabsContent>
         </Tabs>

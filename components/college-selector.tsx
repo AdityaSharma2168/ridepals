@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
-import { useCollege, colleges, type College } from "@/contexts/college-context"
+import { useCollege } from "@/contexts/college-context"
+import type { College } from "@/contexts/college-context"
 
 type CollegeSelectorProps = {
   className?: string
@@ -15,7 +16,7 @@ type CollegeSelectorProps = {
 
 export default function CollegeSelector({ className, onSelectCallback }: CollegeSelectorProps) {
   const [open, setOpen] = useState(false)
-  const { selectedCollege, setSelectedCollege } = useCollege()
+  const { selectedCollege, setSelectedCollege, colleges } = useCollege()
 
   const handleSelectCollege = (college: College) => {
     setSelectedCollege(college)
@@ -69,7 +70,7 @@ export default function CollegeSelector({ className, onSelectCallback }: College
                     </div>
                     <div className="text-xs text-gray-500 ml-6">
                       <MapPin className="inline-block h-3 w-3 mr-1" />
-                      {college.location}
+                      {college.domain}
                     </div>
                   </div>
                 </CommandItem>
