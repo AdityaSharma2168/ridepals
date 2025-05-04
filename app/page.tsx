@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -8,43 +8,67 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Calendar, Clock, Users, Coffee, Star, ChevronRight, Search, Check, School } from "lucide-react"
+import { MapPin, Calendar, Clock, Users, Coffee, Star, ChevronRight, Search, Check, School, Loader2, Navigation } from "lucide-react"
 import RideMap from "@/components/ride-map"
-import PitStopCard from "@/components/pit-stop-card"
+import RestaurantCard from "@/components/restaurant-card"
 import RecurringRideCard from "@/components/recurring-ride-card"
 import CollegeSelector from "@/components/college-selector"
 import { useCollege, type College } from "@/contexts/college-context"
+import { useAuth } from "@/contexts/auth-context"
+import { toast, useToast } from "@/components/ui/use-toast"
+import { useRouter } from "next/navigation"
+import { findNearbyLocations, getPopularStartingPoints, type Location } from "@/lib/campus-locations"
 
 export default function Home() {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState("available")
   const [searchQuery, setSearchQuery] = useState("")
   const [isSearchFocused, setIsSearchFocused] = useState(false)
   const [showBookingSuccess, setShowBookingSuccess] = useState(false)
   const { selectedCollege, nearbyColleges } = useCollege()
+  const { user } = useAuth()
+  
+  // New state for quick search
+  const [startLocation, setStartLocation] = useState("")
+  const [searchDate, setSearchDate] = useState("")
+  const [isGettingLocation, setIsGettingLocation] = useState(false)
+  const [locationError, setLocationError] = useState("")
+  const [nearbyLocations, setNearbyLocations] = useState<Location[]>([])
+  const [popularLocations, setPopularLocations] = useState<Location[]>([])
 
-  // Generate college-specific pit stops
-  const getPitStops = () => {
+  // Load popular locations when college changes
+  useEffect(() => {
+    if (selectedCollege?.id) {
+      const locations = getPopularStartingPoints(selectedCollege.id);
+      setPopularLocations(locations);
+    } else {
+      setPopularLocations([]);
+    }
+  }, [selectedCollege]);
+
+  // Generate popular restaurants data
+  const getPopularRestaurants = () => {
     return [
       {
-        name: `${selectedCollege?.location || 'Local'} Boba`,
+        name: "Five Guys",
         image: "/placeholder.svg?height=80&width=80",
-        discount: "10% off",
-        rating: 4.8,
-        category: "Bubble Tea",
+        discount: "15% off",
+        rating: 4.7,
+        category: "Burgers",
       },
       {
-        name: `${selectedCollege?.abbreviation || 'Campus'} Café`,
+        name: "Chipotle",
         image: "/placeholder.svg?height=80&width=80",
-        discount: "Free cookie with purchase",
+        discount: "Free guac with purchase",
+        rating: 4.5,
+        category: "Mexican",
+      },
+      {
+        name: "Starbucks",
+        image: "/placeholder.svg?height=80&width=80",
+        discount: "$2 off any grande drink",
         rating: 4.6,
         category: "Coffee",
-      },
-      {
-        name: "Ike's Sandwiches",
-        image: "/placeholder.svg?height=80&width=80",
-        discount: "$2 off any sandwich",
-        rating: 4.7,
-        category: "Sandwiches",
       },
     ]
   }
@@ -53,6 +77,83 @@ export default function Home() {
     setShowBookingSuccess(true)
     setTimeout(() => setShowBookingSuccess(false), 3000)
   }
+
+  // Function to get current location
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by your browser");
+      return;
+    }
+    
+    setIsGettingLocation(true);
+    setLocationError("");
+    
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        // Get the coordinates
+        const { latitude, longitude } = position.coords;
+        
+        // Find nearby locations based on user's coordinates
+        const nearby = findNearbyLocations(latitude, longitude, 10, 5);
+        setNearbyLocations(nearby);
+        
+        if (nearby.length > 0) {
+          // Use the closest location name
+          const closestLocation = nearby[0];
+          setStartLocation(`${closestLocation.name} (${closestLocation.distance?.toFixed(1)} mi)`);
+          
+          toast({
+            title: "Location Found",
+            description: `Found ${nearby.length} locations near you. Closest: ${closestLocation.name}`,
+          });
+        } else {
+          // If no nearby locations found, just use coordinates
+          setStartLocation(`Current Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
+          
+          toast({
+            title: "Location Found",
+            description: "No known campus locations nearby. Using coordinates instead.",
+          });
+        }
+        setIsGettingLocation(false);
+      },
+      (error) => {
+        setIsGettingLocation(false);
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            setLocationError("Location permission denied");
+            break;
+          case error.POSITION_UNAVAILABLE:
+            setLocationError("Location information unavailable");
+            break;
+          case error.TIMEOUT:
+            setLocationError("Location request timed out");
+            break;
+          default:
+            setLocationError("An unknown error occurred");
+        }
+      }
+    );
+  };
+
+  // Handle quick search
+  const handleQuickSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Prepare URL params for redirection to find page
+    const params = new URLSearchParams();
+    if (startLocation) params.append('from', startLocation);
+    if (searchDate) params.append('date', searchDate);
+    
+    // In a full implementation, redirect to find page with search parameters
+    router.push(`/find?${params.toString()}`);
+    
+    // Toast for the demo
+    toast({
+      title: "Searching Rides",
+      description: `Looking for rides from: ${startLocation || "Any location"}${searchDate ? `, on ${searchDate}` : ""}`,
+    });
+  };
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -112,395 +213,295 @@ export default function Home() {
         </div>
       </section>
 
-      {/* College Selection Section */}
+      {/* User College Section - Shows college if logged in, or signup prompt if not */}
       <section className="bg-white py-8 border-b">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold mb-2">Find rides at your college</h2>
-              <p className="text-gray-600">Connect with students from your campus for safe, affordable rides</p>
+          {user ? (
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold mb-2">Welcome, {user.email?.split('@')[0] || 'Student'}</h2>
+                <p className="text-gray-600">
+                  You're connected with <span className="font-semibold">{selectedCollege?.name || 'your college'}</span> community
+                </p>
+              </div>
+              <div>
+                <Badge className="px-4 py-2 bg-rose-100 text-rose-800 border-rose-200 text-sm">
+                  <School className="h-4 w-4 mr-2" />
+                  {selectedCollege?.abbreviation || 'College'} Student
+                </Badge>
+              </div>
             </div>
-            <div className="w-full md:w-auto">
-              <CollegeSelector className="w-full md:w-[300px]" />
+          ) : (
+            <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+              <div>
+                <h2 className="text-2xl font-bold mb-2">Join your college community</h2>
+                <p className="text-gray-600">
+                  Sign up with your .edu email to connect with students from your campus
+                </p>
+              </div>
+              <Link href="/auth/signup">
+                <Button className="whitespace-nowrap">
+                  Sign Up with .edu Email
+                </Button>
+              </Link>
             </div>
-          </div>
+          )}
         </div>
       </section>
 
       {/* Main Content */}
       <section className="container mx-auto px-4 py-12">
-        <div className="flex flex-col md:flex-row gap-8">
-          {/* Left Column - Map and Rides */}
-          <div className="md:w-2/3">
-            <div className="bg-white rounded-xl shadow-md p-4 mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold">Find Rides</h2>
-                <div
-                  className={`relative w-full max-w-sm transition-all duration-300 ${isSearchFocused ? "ring-2 ring-rose-500 ring-opacity-50" : ""}`}
-                >
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                  <input
-                    type="text"
-                    placeholder={`Where to in ${selectedCollege?.location || 'your area'}?`}
-                    className="w-full pl-10 pr-4 py-2 border rounded-full focus:outline-none focus:border-rose-500"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onFocus={() => setIsSearchFocused(true)}
-                    onBlur={() => setIsSearchFocused(false)}
-                  />
+        <div className="flex flex-col gap-12">
+          {/* How RidePals Works Section */}
+          <div className="bg-white rounded-xl shadow-md p-8">
+            <h2 className="text-3xl font-bold text-center mb-10">How RidePals Works</h2>
+            
+            <div className="grid md:grid-cols-3 gap-8">
+              <div className="flex flex-col items-center text-center">
+                <div className="bg-rose-100 p-4 rounded-full mb-4">
+                  <MapPin className="h-8 w-8 text-rose-600" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Find or Offer a Ride</h3>
+                <p className="text-gray-600">
+                  Search for available rides to your destination or offer seats in your car to help fellow students.
+                </p>
+                <div className="mt-4">
+                  <Link href="/find">
+                    <Button variant="outline" size="sm">Find a Ride</Button>
+                  </Link>
+                  <span className="mx-2">or</span>
+                  <Link href="/offer">
+                    <Button variant="outline" size="sm">Offer a Ride</Button>
+                  </Link>
                 </div>
               </div>
-
-              <div className="bg-gray-100 rounded-lg p-6 mb-4">
-                <div className="text-center mb-6">
-                  <h3 className="text-lg font-semibold mb-2">Quick Search</h3>
-                  <p className="text-gray-600">Enter your starting point to find rides near you</p>
+              
+              <div className="flex flex-col items-center text-center">
+                <div className="bg-rose-100 p-4 rounded-full mb-4">
+                  <Coffee className="h-8 w-8 text-rose-600" />
                 </div>
-                
-                <div className="flex flex-col md:flex-row gap-4 mb-4">
-                  <div className="flex-1 relative">
-                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                    <input
-                      type="text"
-                      placeholder="Starting point (address, landmark, etc.)"
-                      className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:border-rose-500"
-                    />
-                  </div>
-                  
-                  <div className="relative w-full md:w-auto">
-                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                    <input 
-                      type="date"
-                      className="w-full md:w-40 pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:border-rose-500"
-                    />
-                  </div>
-                  
-                  <Button className="h-auto">
-                    <Search className="h-4 w-4 mr-2" />
-                    Search
-                  </Button>
-                </div>
-                
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className="cursor-pointer hover:bg-gray-100">Downtown</Badge>
-                  <Badge variant="outline" className="cursor-pointer hover:bg-gray-100">Campus Center</Badge>
-                  <Badge variant="outline" className="cursor-pointer hover:bg-gray-100">Shopping Mall</Badge>
-                  <Badge variant="outline" className="cursor-pointer hover:bg-gray-100">Train Station</Badge>
+                <h3 className="text-xl font-semibold mb-2">Order Food for Pickup</h3>
+                <p className="text-gray-600">
+                  Order food from local restaurants and have it picked up by drivers who are already heading your way.
+                </p>
+                <div className="mt-4">
+                  <Link href="/food">
+                    <Button variant="outline" size="sm">Explore Restaurants</Button>
+                  </Link>
                 </div>
               </div>
-
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-4 mb-4">
-                  <TabsTrigger value="available">Available</TabsTrigger>
-                  <TabsTrigger value="intercampus">Intercampus</TabsTrigger>
-                  <TabsTrigger value="recurring">Recurring</TabsTrigger>
-                  <TabsTrigger value="my-rides">My Rides</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="available" className="space-y-4">
-                  <Card className="overflow-hidden hover:shadow-md transition-all duration-300">
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-4">
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage src="/placeholder.svg?height=50&width=50" alt="Driver" />
-                          <AvatarFallback>JS</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h3 className="font-semibold">Jessica S.</h3>
-                              <div className="flex items-center text-sm text-gray-500">
-                                <Star className="h-4 w-4 text-yellow-500 mr-1" fill="currentColor" />
-                                <span>4.9</span>
-                                <Badge variant="outline" className="ml-2 flex items-center">
-                                  <School className="h-3 w-3 mr-1" />
-                                  {selectedCollege?.abbreviation}
-                                </Badge>
-                              </div>
-                            </div>
-                            <span className="font-bold text-lg">$4</span>
-                          </div>
-
-                          <div className="mt-3 space-y-2">
-                            <div className="flex items-center text-sm">
-                              <MapPin className="h-4 w-4 text-gray-400 mr-2" />
-                              <div>
-                                <div className="font-medium">
-                                  {selectedCollege?.abbreviation} Dorms → {selectedCollege?.location || 'Downtown'}
-                                </div>
-                                <div className="text-gray-500">3.2 miles • 12 min</div>
-                              </div>
-                            </div>
-                            <div className="flex items-center text-sm">
-                              <Clock className="h-4 w-4 text-gray-400 mr-2" />
-                              <span>Today at 5:30 PM</span>
-                            </div>
-                            <div className="flex items-center text-sm">
-                              <Users className="h-4 w-4 text-gray-400 mr-2" />
-                              <span>2 seats available</span>
-                            </div>
-                            <div className="flex items-center text-sm">
-                              <Coffee className="h-4 w-4 text-gray-400 mr-2" />
-                              <span className="text-rose-600">Pit stop: {selectedCollege?.location || 'Local'} Boba (10% off)</span>
-                            </div>
-                          </div>
-
-                          <div className="mt-4 flex justify-end">
-                            <Button onClick={handleBookRide} className="transition-all hover:shadow-md">
-                              Book Seat
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="overflow-hidden hover:shadow-md transition-all duration-300">
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-4">
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage src="/placeholder.svg?height=50&width=50" alt="Driver" />
-                          <AvatarFallback>MT</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h3 className="font-semibold">Michael T.</h3>
-                              <div className="flex items-center text-sm text-gray-500">
-                                <Star className="h-4 w-4 text-yellow-500 mr-1" fill="currentColor" />
-                                <span>4.7</span>
-                                <Badge variant="outline" className="ml-2 flex items-center">
-                                  <School className="h-3 w-3 mr-1" />
-                                  {selectedCollege?.abbreviation}
-                                </Badge>
-                              </div>
-                            </div>
-                            <span className="font-bold text-lg">$5</span>
-                          </div>
-
-                          <div className="mt-3 space-y-2">
-                            <div className="flex items-center text-sm">
-                              <MapPin className="h-4 w-4 text-gray-400 mr-2" />
-                              <div>
-                                <div className="font-medium">{selectedCollege?.abbreviation} Campus → Trader Joe's</div>
-                                <div className="text-gray-500">2.8 miles • 10 min</div>
-                              </div>
-                            </div>
-                            <div className="flex items-center text-sm">
-                              <Clock className="h-4 w-4 text-gray-400 mr-2" />
-                              <span>Today at 6:15 PM</span>
-                            </div>
-                            <div className="flex items-center text-sm">
-                              <Users className="h-4 w-4 text-gray-400 mr-2" />
-                              <span>3 seats available</span>
-                            </div>
-                          </div>
-
-                          <div className="mt-4 flex justify-end">
-                            <Button onClick={handleBookRide} className="transition-all hover:shadow-md">
-                              Book Seat
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="intercampus" className="space-y-4">
-                  {nearbyColleges?.length > 0 ? (
-                    nearbyColleges.slice(0, 2).map((college: College, index: number) => (
-                      <Card key={college.id} className="overflow-hidden hover:shadow-md transition-all duration-300">
-                        <CardContent className="p-4">
-                          <div className="flex items-start gap-4">
-                            <Avatar className="h-12 w-12">
-                              <AvatarImage src="/placeholder.svg?height=50&width=50" alt="Driver" />
-                              <AvatarFallback>{college.abbreviation.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <h3 className="font-semibold">{index % 2 === 0 ? "Jamie L." : "Alex K."}</h3>
-                                  <div className="flex items-center text-sm text-gray-500">
-                                    <Star className="h-4 w-4 text-yellow-500 mr-1" fill="currentColor" />
-                                    <span>{4.6 + index * 0.2}</span>
-                                    <Badge variant="outline" className="ml-2 flex items-center">
-                                      <School className="h-3 w-3 mr-1" />
-                                      {college.abbreviation}
-                                    </Badge>
-                                  </div>
-                                </div>
-                                <span className="font-bold text-lg">${10 + index * 2}</span>
-                              </div>
-
-                              <div className="mt-3 space-y-2">
-                                <div className="flex items-center text-sm">
-                                  <MapPin className="h-4 w-4 text-gray-400 mr-2" />
-                                  <div>
-                                    <div className="font-medium">
-                                      {college.abbreviation} → {selectedCollege?.abbreviation || 'Campus'}
-                                    </div>
-                                    <div className="text-gray-500">Intercampus • {30 + index * 5} min</div>
-                                  </div>
-                                </div>
-                                <div className="flex items-center text-sm">
-                                  <Clock className="h-4 w-4 text-gray-400 mr-2" />
-                                  <span>{index === 0 ? "Tomorrow at 9:00 AM" : "Friday at 2:00 PM"}</span>
-                                </div>
-                                <div className="flex items-center text-sm">
-                                  <Users className="h-4 w-4 text-gray-400 mr-2" />
-                                  <span>{3 - index} seats available</span>
-                                </div>
-                                {index === 0 && (
-                                  <div className="flex items-center text-sm">
-                                    <Coffee className="h-4 w-4 text-gray-400 mr-2" />
-                                    <span className="text-rose-600">Pit stop: Philz Coffee (15% off)</span>
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="mt-4 flex justify-end">
-                                <Button onClick={handleBookRide} className="transition-all hover:shadow-md">
-                                  Book Seat
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-8 text-center">
-                      <div className="bg-gray-100 p-6 rounded-full mb-4">
-                        <MapPin className="h-12 w-12 text-gray-400" />
-                      </div>
-                      <h3 className="text-xl font-medium mb-2">No intercampus rides available</h3>
-                      <p className="text-gray-500 mb-4">Try changing your college or check back later</p>
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="recurring">
-                  <div className="space-y-4">
-                    <RecurringRideCard
-                      driver="Alex W."
-                      route={`${selectedCollege?.abbreviation || 'Campus'} → ${selectedCollege?.location || 'Downtown'}`}
-                      schedule="MWF at 5:30 PM"
-                      price={4}
-                      pitStop={`${selectedCollege?.location || 'Local'} Boba`}
-                      seats={2}
-                    />
-                    {nearbyColleges.length > 0 && (
-                      <RecurringRideCard
-                        driver="Sarah L."
-                        route={`${selectedCollege?.abbreviation || 'Campus'} → ${nearbyColleges[0].abbreviation}`}
-                        schedule="TTh at 8:00 AM"
-                        price={12}
-                        pitStop="Philz Coffee"
-                        seats={3}
-                      />
-                    )}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="my-rides">
-                  <div className="space-y-4">
-                    <Card className="overflow-hidden hover:shadow-md transition-all duration-300">
-                      <CardContent className="p-4">
-                        <div className="flex items-start gap-4">
-                          <Avatar className="h-12 w-12">
-                            <AvatarImage src="/placeholder.svg?height=50&width=50" alt="Driver" />
-                            <AvatarFallback>JS</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <h3 className="font-semibold">Your Upcoming Ride</h3>
-                                <div className="flex items-center text-sm text-gray-500">
-                                  <Calendar className="h-4 w-4 text-gray-400 mr-1" />
-                                  <span>Tomorrow at 9:00 AM</span>
-                                </div>
-                              </div>
-                              <Badge>Booked</Badge>
-                            </div>
-
-                            <div className="mt-3 space-y-2">
-                              <div className="flex items-center text-sm">
-                                <MapPin className="h-4 w-4 text-gray-400 mr-2" />
-                                <div>
-                                  <div className="font-medium">
-                                    {selectedCollege?.abbreviation || 'Campus'} →{" "}
-                                    {nearbyColleges.length > 0 ? nearbyColleges[0].abbreviation : "Downtown"}
-                                  </div>
-                                  <div className="text-gray-500">Intercampus • 35 min</div>
-                                </div>
-                              </div>
-                              <div className="flex items-center text-sm">
-                                <Users className="h-4 w-4 text-gray-400 mr-2" />
-                                <span>Driver: Jamie L. (4.8 ★)</span>
-                              </div>
-                            </div>
-
-                            <div className="mt-4 flex justify-end">
-                              <Button variant="outline" size="sm" className="mr-2">
-                                View Details
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-red-600 border-red-200 hover:bg-red-50"
-                              >
-                                Cancel
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </TabsContent>
-              </Tabs>
+              
+              <div className="flex flex-col items-center text-center">
+                <div className="bg-rose-100 p-4 rounded-full mb-4">
+                  <Users className="h-8 w-8 text-rose-600" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Connect Safely</h3>
+                <p className="text-gray-600">
+                  Share rides with verified college students, making transportation safer and more reliable.
+                </p>
+                <div className="mt-4">
+                  <Link href="/auth/signup">
+                    <Button variant="outline" size="sm">Join Our Community</Button>
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Right Column - Pit Stops and Community */}
-          <div className="md:w-1/3">
-            <div className="bg-white rounded-xl shadow-md p-4 mb-8">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold">Popular Pit Stops</h2>
-                <Link href="/pitstops">
-                  <Button variant="ghost" size="sm" className="text-rose-600 hover:bg-rose-50 transition-colors">
-                    View All <ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
+          {/* Why Choose RidePals Section */}
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="bg-white rounded-xl shadow-md p-8">
+              <h2 className="text-2xl font-bold mb-6">What We Provide</h2>
+              
+              <ul className="space-y-4">
+                <li className="flex items-start">
+                  <div className="bg-green-100 p-2 rounded-full mr-4">
+                    <Check className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">College-Verified Community</h3>
+                    <p className="text-gray-600">Only students with .edu emails can join, creating a trusted network.</p>
+                  </div>
+                </li>
+                
+                <li className="flex items-start">
+                  <div className="bg-green-100 p-2 rounded-full mr-4">
+                    <Check className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Food Pickup Service</h3>
+                    <p className="text-gray-600">Order from local restaurants and have drivers pick it up on their way to campus.</p>
+                  </div>
+                </li>
+                
+                <li className="flex items-start">
+                  <div className="bg-green-100 p-2 rounded-full mr-4">
+                    <Check className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Intercampus Travel</h3>
+                    <p className="text-gray-600">Connect with students from other Bay Area colleges for convenient campus-to-campus rides.</p>
+                  </div>
+                </li>
+                
+                <li className="flex items-start">
+                  <div className="bg-green-100 p-2 rounded-full mr-4">
+                    <Check className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Recurring Ride Scheduling</h3>
+                    <p className="text-gray-600">Set up regular rides for your weekly schedule and never worry about commuting again.</p>
+                  </div>
+                </li>
+              </ul>
+              
+              <div className="mt-6">
+                <Link href="/find">
+                  <Button>Start Riding Now</Button>
                 </Link>
-              </div>
-
-              <div className="space-y-4">
-                {getPitStops().map((pitStop, index) => (
-                  <PitStopCard
-                    key={index}
-                    name={pitStop.name}
-                    image={pitStop.image}
-                    discount={pitStop.discount}
-                    rating={pitStop.rating}
-                    category={pitStop.category}
-                  />
-                ))}
               </div>
             </div>
             
-            <div className="bg-white rounded-xl shadow-md p-4">
-              <h2 className="text-2xl font-bold mb-4">Join Our Community</h2>
-              <p className="text-gray-600 mb-6">
-                Connect with students from your campus and share rides safely and affordably.
-              </p>
+            <div className="bg-white rounded-xl shadow-md p-8">
+              <h2 className="text-2xl font-bold mb-6">Why Use RidePals?</h2>
               
-              <Link href="/auth/signup">
-                <Button className="w-full">
-                  Sign Up Now
-                </Button>
-              </Link>
+              <div className="space-y-6">
+                <div>
+                  <h3 className="font-semibold text-lg mb-2 flex items-center">
+                    <span className="bg-rose-100 text-rose-600 h-6 w-6 rounded-full flex items-center justify-center mr-3 text-sm">1</span>
+                    Save Money
+                  </h3>
+                  <p className="text-gray-600 ml-9">
+                    Split ride costs with fellow students and save on expensive parking fees or public transportation.
+                  </p>
+                </div>
+                
+                <div>
+                  <h3 className="font-semibold text-lg mb-2 flex items-center">
+                    <span className="bg-rose-100 text-rose-600 h-6 w-6 rounded-full flex items-center justify-center mr-3 text-sm">2</span>
+                    Reduce Environmental Impact
+                  </h3>
+                  <p className="text-gray-600 ml-9">
+                    Carpooling means fewer cars on the road, reducing traffic congestion and carbon emissions.
+                  </p>
+                </div>
+                
+                <div>
+                  <h3 className="font-semibold text-lg mb-2 flex items-center">
+                    <span className="bg-rose-100 text-rose-600 h-6 w-6 rounded-full flex items-center justify-center mr-3 text-sm">3</span>
+                    Build Community
+                  </h3>
+                  <p className="text-gray-600 ml-9">
+                    Connect with fellow students, make new friends, and strengthen campus community bonds.
+                  </p>
+                </div>
+                
+                <div>
+                  <h3 className="font-semibold text-lg mb-2 flex items-center">
+                    <span className="bg-rose-100 text-rose-600 h-6 w-6 rounded-full flex items-center justify-center mr-3 text-sm">4</span>
+                    Get Food Delivered
+                  </h3>
+                  <p className="text-gray-600 ml-9">
+                    Order from your favorite restaurants and have it brought to your drop-off point by drivers already making the trip.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="mt-6">
+                <Link href="/auth/signup">
+                  <Button variant="outline">Create Account</Button>
+                </Link>
+              </div>
             </div>
+          </div>
+          
+          {/* About Us Section */}
+          <div className="bg-white rounded-xl shadow-md p-8">
+            <h2 className="text-3xl font-bold text-center mb-8">About RidePals</h2>
+            
+            <div className="flex flex-col md:flex-row gap-8 items-center">
+              <div className="md:w-1/3 flex justify-center">
+                <div className="relative w-64 h-64">
+                  <Image
+                    src="/ridepals-logo.png"
+                    alt="RidePals Logo"
+                    fill
+                    className="object-contain"
+                  />
+                </div>
+              </div>
+              
+              <div className="md:w-2/3">
+                <p className="text-gray-700 mb-4">
+                  RidePals began with a simple idea: make college transportation more affordable, sustainable, and community-oriented. 
+                  Founded by Bay Area college students who were frustrated with expensive, inconvenient transportation options, 
+                  we built a platform specifically designed for the unique needs of college communities.
+                </p>
+                
+                <p className="text-gray-700 mb-4">
+                  Our mission is to connect students through shared rides while supporting local businesses through our restaurant 
+                  order pickup feature. We believe that transportation can be more than just getting from point A to point B—it can 
+                  be an opportunity to build connections, save money, and contribute to a more sustainable future.
+                </p>
+                
+                <p className="text-gray-700">
+                  Today, RidePals serves students across multiple Bay Area colleges, with plans to expand to campuses nationwide.
+                </p>
+                
+                <div className="mt-6 flex flex-wrap gap-4">
+                  <Link href="/about">
+                    <Button variant="outline">Learn More</Button>
+                  </Link>
+                  <Link href="/contact">
+                    <Button variant="outline">Contact Us</Button>
+                  </Link>
+                  <Link href="/terms">
+                    <Button variant="outline">Terms & Privacy</Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Newsletter Section */}
+          <div className="bg-gradient-to-r from-rose-500 to-orange-500 rounded-xl shadow-md p-8 text-white">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold mb-4">Join Our Community</h2>
+              <p className="text-white/80 max-w-xl mx-auto">
+                Stay updated with the latest features, campus expansions, and special offers by subscribing to our newsletter.
+              </p>
+            </div>
+            
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const email = (e.target as HTMLFormElement).email.value;
+              // Store email in localStorage for demonstration
+              const subscribers = JSON.parse(localStorage.getItem('newsletter_subscribers') || '[]');
+              subscribers.push(email);
+              localStorage.setItem('newsletter_subscribers', JSON.stringify(subscribers));
+              // Show success message
+              toast({
+                title: "Subscribed!",
+                description: "You've been added to our newsletter.",
+                duration: 3000,
+              });
+              // Clear the input
+              (e.target as HTMLFormElement).reset();
+            }} className="max-w-md mx-auto">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  placeholder="your@email.edu"
+                  required
+                  className="w-full px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-white/50 text-gray-800"
+                />
+                <Button type="submit" className="bg-white text-rose-600 hover:bg-gray-100 whitespace-nowrap">
+                  Subscribe
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       </section>
