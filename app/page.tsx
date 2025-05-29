@@ -170,12 +170,11 @@ export default function Home() {
         <div className="container mx-auto px-4 py-16 md:py-24 flex flex-col md:flex-row items-center relative z-10">
           <div className="md:w-1/2 mb-10 md:mb-0 md:pr-10">
             <div className="flex items-center mb-6">
-              <Image src="/ridepals-logo.png" alt="ridepals.ai logo" width={80} height={80} className="mr-4" />
-              <h1 className="text-4xl md:text-5xl font-bold animate-in slide-in-from-left duration-500">ridepals.ai</h1>
+              <Image src="/ridepals-logo.png" alt="ridepals logo" width={80} height={80} className="mr-4" />
+              <h1 className="text-4xl md:text-5xl font-bold animate-in slide-in-from-left duration-500">ridepals</h1>
             </div>
             <p className="text-lg md:text-xl mb-8 animate-in slide-in-from-left duration-500 delay-100">
-              Share rides with verified college peers across the Bay Area, save money, and support local businesses with
-              purposeful pit stops.
+              Share rides with verified college peers across the Bay Area, save money, and support local businesses.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 animate-in slide-in-from-left duration-500 delay-200">
               <Link href="/find">
@@ -202,7 +201,7 @@ export default function Home() {
             <div className="bg-white/10 p-8 rounded-lg shadow-2xl relative flex items-center justify-center h-full">
               <Image
                 src="/ridepals-logo.png"
-                alt="ridepals.ai logo"
+                alt="ridepals logo"
                 width={400}
                 height={400}
                 className="w-full h-auto object-contain"
@@ -291,113 +290,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Why Choose RidePals Section */}
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-white rounded-xl shadow-md p-8">
-              <h2 className="text-2xl font-bold mb-6">What We Provide</h2>
-              
-              <ul className="space-y-4">
-                <li className="flex items-start">
-                  <div className="bg-green-100 p-2 rounded-full mr-4">
-                    <Check className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">College-Verified Community</h3>
-                    <p className="text-gray-600">Only students with .edu emails can join, creating a trusted network.</p>
-                  </div>
-                </li>
-                
-                <li className="flex items-start">
-                  <div className="bg-green-100 p-2 rounded-full mr-4">
-                    <Check className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">Food Pickup Service</h3>
-                    <p className="text-gray-600">Order from local restaurants and have drivers pick it up on their way to campus.</p>
-                  </div>
-                </li>
-                
-                <li className="flex items-start">
-                  <div className="bg-green-100 p-2 rounded-full mr-4">
-                    <Check className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">Intercampus Travel</h3>
-                    <p className="text-gray-600">Connect with students from other Bay Area colleges for convenient campus-to-campus rides.</p>
-                  </div>
-                </li>
-                
-                <li className="flex items-start">
-                  <div className="bg-green-100 p-2 rounded-full mr-4">
-                    <Check className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">Recurring Ride Scheduling</h3>
-                    <p className="text-gray-600">Set up regular rides for your weekly schedule and never worry about commuting again.</p>
-                  </div>
-                </li>
-              </ul>
-              
-              <div className="mt-6">
-                <Link href="/find">
-                  <Button>Start Riding Now</Button>
-                </Link>
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-xl shadow-md p-8">
-              <h2 className="text-2xl font-bold mb-6">Why Use RidePals?</h2>
-              
-              <div className="space-y-6">
-                <div>
-                  <h3 className="font-semibold text-lg mb-2 flex items-center">
-                    <span className="bg-rose-100 text-rose-600 h-6 w-6 rounded-full flex items-center justify-center mr-3 text-sm">1</span>
-                    Save Money
-                  </h3>
-                  <p className="text-gray-600 ml-9">
-                    Split ride costs with fellow students and save on expensive parking fees or public transportation.
-                  </p>
-                </div>
-                
-                <div>
-                  <h3 className="font-semibold text-lg mb-2 flex items-center">
-                    <span className="bg-rose-100 text-rose-600 h-6 w-6 rounded-full flex items-center justify-center mr-3 text-sm">2</span>
-                    Reduce Environmental Impact
-                  </h3>
-                  <p className="text-gray-600 ml-9">
-                    Carpooling means fewer cars on the road, reducing traffic congestion and carbon emissions.
-                  </p>
-                </div>
-                
-                <div>
-                  <h3 className="font-semibold text-lg mb-2 flex items-center">
-                    <span className="bg-rose-100 text-rose-600 h-6 w-6 rounded-full flex items-center justify-center mr-3 text-sm">3</span>
-                    Build Community
-                  </h3>
-                  <p className="text-gray-600 ml-9">
-                    Connect with fellow students, make new friends, and strengthen campus community bonds.
-                  </p>
-                </div>
-                
-                <div>
-                  <h3 className="font-semibold text-lg mb-2 flex items-center">
-                    <span className="bg-rose-100 text-rose-600 h-6 w-6 rounded-full flex items-center justify-center mr-3 text-sm">4</span>
-                    Get Food Delivered
-                  </h3>
-                  <p className="text-gray-600 ml-9">
-                    Order from your favorite restaurants and have it brought to your drop-off point by drivers already making the trip.
-                  </p>
-                </div>
-              </div>
-              
-              <div className="mt-6">
-                <Link href="/auth/signup">
-                  <Button variant="outline">Create Account</Button>
-                </Link>
-              </div>
-            </div>
-          </div>
-          
           {/* About Us Section */}
           <div className="bg-white rounded-xl shadow-md p-8">
             <h2 className="text-3xl font-bold text-center mb-8">About RidePals</h2>
@@ -423,25 +315,10 @@ export default function Home() {
                 
                 <p className="text-gray-700 mb-4">
                   Our mission is to connect students through shared rides while supporting local businesses through our restaurant 
-                  order pickup feature. We believe that transportation can be more than just getting from point A to point B—it can 
-                  be an opportunity to build connections, save money, and contribute to a more sustainable future.
+                  order pickup feature. We provide gender filters to ensure women's safety and peace of mind when choosing rides. 
+                  Plus, you can order from small businesses and restaurants like In-N-Out that aren't available on traditional food apps,
+                  giving you access to unique local flavors while supporting the community.
                 </p>
-                
-                <p className="text-gray-700">
-                  Today, RidePals serves students across multiple Bay Area colleges, with plans to expand to campuses nationwide.
-                </p>
-                
-                <div className="mt-6 flex flex-wrap gap-4">
-                  <Link href="/about">
-                    <Button variant="outline">Learn More</Button>
-                  </Link>
-                  <Link href="/contact">
-                    <Button variant="outline">Contact Us</Button>
-                  </Link>
-                  <Link href="/terms">
-                    <Button variant="outline">Terms & Privacy</Button>
-                  </Link>
-                </div>
               </div>
             </div>
           </div>

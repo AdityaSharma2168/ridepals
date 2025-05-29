@@ -43,17 +43,41 @@ export default function ProfilePage() {
   const [success, setSuccess] = useState<string | null>(null)
   const [showStats, setShowStats] = useState(false)
   
-  // User stats data
+  // Function to extract school name from email domain
+  const getSchoolFromEmail = (email: string) => {
+    if (!email) return "College not specified"
+    
+    const domain = email.split('@')[1]?.toLowerCase()
+    
+    // Map common .edu domains to school names
+    const schoolMap: { [key: string]: string } = {
+      'stanford.edu': 'Stanford University',
+      'berkeley.edu': 'UC Berkeley',
+      'sjsu.edu': 'San Jose State University',
+      'scu.edu': 'Santa Clara University',
+      'ucsf.edu': 'UC San Francisco',
+      'ccsf.edu': 'City College of San Francisco',
+      'ohlone.edu': 'Ohlone College',
+      'deanza.edu': 'De Anza College',
+      'foothill.edu': 'Foothill College',
+      'calbaptist.edu': 'California Baptist University',
+      'cpp.edu': 'Cal Poly Pomona',
+      'calpoly.edu': 'Cal Poly San Luis Obispo',
+      'ucdavis.edu': 'UC Davis'
+    }
+    
+    return schoolMap[domain] || `${domain?.split('.')[0]?.toUpperCase()} University`
+  }
+  
+  // User stats data - all set to 0
   const userStats = {
-    co2Saved: 320, // kg
-    ridesShared: 28,
-    totalDistance: 432, // miles
-    ridesOffered: 18,
-    ridesBooked: 10,
-    favoritePitStop: "Boba Guys",
-    pitStopVisits: 12,
-    moneyEarned: 215, // dollars
-    moneySaved: 180, // dollars
+    co2Saved: 0, // kg
+    ridesShared: 0,
+    totalDistance: 0, // miles
+    ridesOffered: 0,
+    ridesBooked: 0,
+    moneyEarned: 0, // dollars
+    moneySaved: 0, // dollars
   }
   
   useEffect(() => {
@@ -80,7 +104,7 @@ export default function ProfilePage() {
         setUserData({
           first_name: "Demo", // These would come from your backend normally
           last_name: "User",
-          college_name: "Stanford University",
+          college_name: getSchoolFromEmail(data.user?.email || user?.email || ""),
           average_rating: 4.8,
           ...data.user
         })
@@ -217,14 +241,6 @@ export default function ProfilePage() {
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Rides Booked:</span>
                         <span className="font-medium">{userStats.ridesBooked}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Favorite Pit Stop:</span>
-                        <span className="font-medium">{userStats.favoritePitStop}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Pit Stop Visits:</span>
-                        <span className="font-medium">{userStats.pitStopVisits}</span>
                       </div>
                     </div>
                     

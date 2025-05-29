@@ -15,11 +15,11 @@ import { useCollege } from "@/contexts/college-context"
 import { useAuth } from "@/contexts/auth-context"
 
 // Define ride pricing constants
-const BASE_FARE = 2.00;               // Base platform fee
-const COST_PER_MILE = 0.75;           // Cost per mile
-const COST_PER_MINUTE = 0.10;         // Cost per minute
+const BASE_FARE = 5.00;                // Base fare for all rides
+const COST_PER_MILE = 0.70;           // Cost per mile
+const COST_PER_MINUTE = 0.21;         // Cost per minute
 const MIN_FARE = 3.00;                // Minimum fare
-const MAX_FARE_PER_MILE = 1.50;       // Maximum fare per mile cap
+const MAX_FARE_PER_MILE = 3.00;       // Max fare per mile for very short distances
 
 // Days of the week for recurring rides
 const DAYS_OF_WEEK = [
