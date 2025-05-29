@@ -30,11 +30,6 @@ type Ride = {
   seats_available: number
   price_per_seat: number
   description?: string
-  pit_stops?: Array<{
-    id: string
-    name: string
-    discount_description: string
-  }>
   status: string
   is_intercampus: boolean
 }
@@ -75,6 +70,10 @@ export default function MyRidesPage() {
   const [currentRideId, setCurrentRideId] = useState<string | null>(null)
   const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false)
   const [currentBookingId, setCurrentBookingId] = useState<string | null>(null)
+  const [localBusinesses, setLocalBusinesses] = useState([
+    { id: "1", name: "Spartans" },
+    { id: "2", name: "In-N-Out" }
+  ]);
 
   useEffect(() => {
     // Check if user is authenticated
@@ -530,43 +529,43 @@ export default function MyRidesPage() {
             </div>
           </TabsContent>
         </Tabs>
+        
+        {/* Confirmation Dialog */}
+        <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cancel Ride</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to cancel this ride? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Nevermind</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmCancelRide} className="bg-red-600 hover:bg-red-700">
+                Yes, Cancel Ride
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        
+        {/* Booking Cancellation Dialog */}
+        <AlertDialog open={isBookingDialogOpen} onOpenChange={setIsBookingDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cancel Booking</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to cancel this booking? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Nevermind</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmCancelBooking} className="bg-red-600 hover:bg-red-700">
+                Yes, Cancel Booking
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
-      
-      {/* Confirmation Dialog */}
-      <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Ride</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to cancel this ride? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Nevermind</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmCancelRide} className="bg-red-600 hover:bg-red-700">
-              Yes, Cancel Ride
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      
-      {/* Booking Cancellation Dialog */}
-      <AlertDialog open={isBookingDialogOpen} onOpenChange={setIsBookingDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Booking</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to cancel this booking? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Nevermind</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmCancelBooking} className="bg-red-600 hover:bg-red-700">
-              Yes, Cancel Booking
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </main>
   )
 } 

@@ -167,7 +167,6 @@ export default function Home() {
 
       {/* Hero Section */}
       <section className="relative bg-gradient-to-r from-rose-500 to-orange-500 text-white overflow-hidden">
-        <div className="absolute inset-0 bg-[url('/placeholder.svg?height=800&width=1200')] opacity-20 bg-cover bg-center"></div>
         <div className="container mx-auto px-4 py-16 md:py-24 flex flex-col md:flex-row items-center relative z-10">
           <div className="md:w-1/2 mb-10 md:mb-0 md:pr-10">
             <div className="flex items-center mb-6">
@@ -256,14 +255,14 @@ export default function Home() {
           <div className="bg-white rounded-xl shadow-md p-8">
             <h2 className="text-3xl font-bold text-center mb-10">How RidePals Works</h2>
             
-            <div className="grid md:grid-cols-3 gap-8">
-              <div className="flex flex-col items-center text-center">
+            <div className="grid md:grid-cols-2 gap-8">
+              <div className="flex flex-col items-center text-center animate-fade-in animate-on-scroll">
                 <div className="bg-rose-100 p-4 rounded-full mb-4">
                   <MapPin className="h-8 w-8 text-rose-600" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Find or Offer a Ride</h3>
                 <p className="text-gray-600">
-                  Search for available rides to your destination or offer seats in your car to help fellow students.
+                  Share rides with verified college students, making transportation safer and more reliable.
                 </p>
                 <div className="mt-4">
                   <Link href="/find">
@@ -275,8 +274,7 @@ export default function Home() {
                   </Link>
                 </div>
               </div>
-              
-              <div className="flex flex-col items-center text-center">
+              <div className="flex flex-col items-center text-center animate-fade-in animate-on-scroll">
                 <div className="bg-rose-100 p-4 rounded-full mb-4">
                   <Coffee className="h-8 w-8 text-rose-600" />
                 </div>
@@ -287,21 +285,6 @@ export default function Home() {
                 <div className="mt-4">
                   <Link href="/food">
                     <Button variant="outline" size="sm">Explore Restaurants</Button>
-                  </Link>
-                </div>
-              </div>
-              
-              <div className="flex flex-col items-center text-center">
-                <div className="bg-rose-100 p-4 rounded-full mb-4">
-                  <Users className="h-8 w-8 text-rose-600" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Connect Safely</h3>
-                <p className="text-gray-600">
-                  Share rides with verified college students, making transportation safer and more reliable.
-                </p>
-                <div className="mt-4">
-                  <Link href="/auth/signup">
-                    <Button variant="outline" size="sm">Join Our Community</Button>
                   </Link>
                 </div>
               </div>
@@ -463,45 +446,21 @@ export default function Home() {
             </div>
           </div>
           
-          {/* Newsletter Section */}
-          <div className="bg-gradient-to-r from-rose-500 to-orange-500 rounded-xl shadow-md p-8 text-white">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-4">Join Our Community</h2>
-              <p className="text-white/80 max-w-xl mx-auto">
-                Stay updated with the latest features, campus expansions, and special offers by subscribing to our newsletter.
-              </p>
-            </div>
-            
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              const email = (e.target as HTMLFormElement).email.value;
-              // Store email in localStorage for demonstration
-              const subscribers = JSON.parse(localStorage.getItem('newsletter_subscribers') || '[]');
-              subscribers.push(email);
-              localStorage.setItem('newsletter_subscribers', JSON.stringify(subscribers));
-              // Show success message
-              toast({
-                title: "Subscribed!",
-                description: "You've been added to our newsletter.",
-                duration: 3000,
-              });
-              // Clear the input
-              (e.target as HTMLFormElement).reset();
-            }} className="max-w-md mx-auto">
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  placeholder="your@email.edu"
-                  required
-                  className="w-full px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-white/50 text-gray-800"
-                />
-                <Button type="submit" className="bg-white text-rose-600 hover:bg-gray-100 whitespace-nowrap">
-                  Subscribe
-                </Button>
+          {/* Meet the Team Section */}
+          <div className="bg-white rounded-xl shadow-md p-8 mt-8">
+            <h2 className="text-3xl font-bold text-center mb-8">Meet the Team</h2>
+            <div className="flex flex-col md:flex-row gap-8 items-center justify-center">
+              <div className="flex flex-col items-center">
+                <Image src="/adipic.jpg" alt="Aditya Sharma" width={120} height={120} className="rounded-full mb-4 object-cover" />
+                <h3 className="text-xl font-semibold">Aditya Sharma</h3>
+                <p className="text-gray-600">CEO</p>
               </div>
-            </form>
+              <div className="flex flex-col items-center">
+                <Image src="/ridepals-logo.png" alt="Lokesh Kamanboina" width={120} height={120} className="rounded-full mb-4" />
+                <h3 className="text-xl font-semibold">Lokesh Kamanboina</h3>
+                <p className="text-gray-600">CTO/Co-Founder</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>

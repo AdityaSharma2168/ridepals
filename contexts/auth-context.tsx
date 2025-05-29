@@ -41,37 +41,6 @@ interface AuthContextType {
   firebaseAvailable: boolean;
 }
 
-// Create a mock user for development
-const createMockUser = (): User => {
-  return {
-    uid: 'mock-user-123',
-    email: 'student@stanford.edu',
-    displayName: 'Demo User',
-    emailVerified: true,
-    photoURL: null,
-    isAnonymous: false,
-    tenantId: null,
-    providerData: [],
-    metadata: { creationTime: '', lastSignInTime: '' },
-    phoneNumber: null,
-    // Methods
-    delete: async () => {},
-    getIdToken: async () => 'mock-token',
-    getIdTokenResult: async () => ({ token: 'mock-token', claims: {}, expirationTime: '', issuedAtTime: '', authTime: '', signInProvider: null, signInSecondFactor: null }),
-    reload: async () => {},
-    toJSON: () => ({}),
-  } as unknown as User;
-};
-
-// Create a mock credential for development
-const createMockCredential = (): UserCredential => {
-  return {
-    user: createMockUser(),
-    providerId: 'mock-provider',
-    operationType: 'signIn'
-  } as unknown as UserCredential;
-};
-
 // Create context with default values
 const AuthContext = createContext<AuthContextType>({
   user: null,
@@ -100,8 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log(`Firebase auth availability: ${authAvailable ? 'YES' : 'NO'}`);
 
     if (!authAvailable || !auth) {
-      console.warn("Firebase auth not initialized - running in demo mode");
-      setUser(createMockUser());
+      console.error("Firebase auth not initialized");
       setLoading(false);
       return;
     }
@@ -130,7 +98,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("Auth state change error:", error);
         setError(error.message);
         setLoading(false);
-        setUser(createMockUser());
       }
     );
 
@@ -145,40 +112,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Sign in with Google
   const signInWithGoogle = async (): Promise<UserCredential | null> => {
     if (!isAuthAvailable() || !auth) {
-      console.warn("Firebase auth not initialized - cannot sign in with Google");
-      return createMockCredential();
+      console.error("Firebase auth not initialized - cannot sign in with Google");
+      setError("Authentication service is not available. Please try again later.");
+      return null;
     }
 
     try {
       console.log("Starting Google sign-in flow with Firebase...");
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
+      
+      // Add a timeout to the sign-in attempt
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Sign-in request timed out. Please check your internet connection.")), 30000);
+      });
+      
+      const result = await Promise.race([
+        signInWithPopup(auth, provider),
+        timeoutPromise
+      ]) as UserCredential;
+      
       console.log("Google sign-in successful, checking email domain");
       
       // Check if it's a .edu email
       if (!isEduEmail(result.user.email || "")) {
         await signOut(auth);
-        throw new Error("Only .edu email addresses are allowed.");
+        setError("Only .edu email addresses are allowed.");
+        return null;
       }
       
-      // Get a fresh ID token
-      const idToken = await result.user.getIdToken(true);
+      try {
+        // Get a fresh ID token
+        const idToken = await result.user.getIdToken(true);
             
-      // Persist the session with our backend
-      const sessionPersisted = await persistSession(idToken);
-      console.log("Session persisted:", sessionPersisted);
-      
-      if (!sessionPersisted) {
-        console.error("Failed to persist session with backend");
+        // Persist the session with our backend
+        await persistSession(idToken);
+        console.log("Session persisted successfully");
+        
+        console.log("Email domain verified, user authenticated");
+        router.refresh(); // Force a refresh of the page to update auth state
+        
+        return result;
+      } catch (sessionError: any) {
+        console.error("Session persistence error:", sessionError);
+        await signOut(auth);
+        setError(sessionError.message || "Failed to create session. Please try again.");
+        return null;
       }
-      
-      console.log("Email domain verified, user authenticated");
-      router.refresh(); // Force a refresh of the page to update auth state
-      
-      return result;
     } catch (error: any) {
       console.error("Google sign-in error:", error);
-      setError(error.message);
+      
+      // Handle specific error types
+      if (error.code === 'auth/network-request-failed') {
+        setError("Network error: Please check your internet connection and try again.");
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        setError("Sign-in was cancelled. Please try again.");
+      } else if (error.code === 'auth/popup-blocked') {
+        setError("Pop-up was blocked. Please allow pop-ups for this site and try again.");
+      } else {
+        setError(error.message || "An error occurred during Google sign in. Please try again.");
+      }
+      
       return null;
     }
   };
@@ -189,8 +182,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string
   ): Promise<UserCredential | null> => {
     if (!isAuthAvailable() || !auth) {
-      console.warn("Firebase auth not initialized - cannot sign in with email/password");
-      return createMockCredential();
+      console.error("Firebase auth not initialized - cannot sign in with email/password");
+      return null;
     }
 
     try {
@@ -205,12 +198,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const idToken = await result.user.getIdToken(true);
             
       // Persist the session with our backend
-      const sessionPersisted = await persistSession(idToken);
-      console.log("Session persisted:", sessionPersisted);
-      
-      if (!sessionPersisted) {
-        console.error("Failed to persist session with backend");
-      }
+      await persistSession(idToken);
+      console.log("Session persisted successfully");
       
       router.refresh(); // Force a refresh of the page to update auth state
       
@@ -231,8 +220,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     lastName: string
   ): Promise<UserCredential | null> => {
     if (!isAuthAvailable() || !auth) {
-      console.warn("Firebase auth not initialized - cannot sign up with email/password");
-      return createMockCredential();
+      console.error("Firebase auth not initialized - cannot sign up with email/password");
+      return null;
     }
 
     try {
@@ -305,7 +294,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Sign out
   const handleSignOut = async (): Promise<void> => {
     if (!isAuthAvailable() || !auth) {
-      console.warn("Firebase auth not initialized - cannot sign out");
+      console.error("Firebase auth not initialized - cannot sign out");
       setUser(null);
       return;
     }

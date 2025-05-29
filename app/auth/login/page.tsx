@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { isAuthAvailable } from "@/lib/firebase/client";
 
 export default function LoginPage() {
-  const { signInWithEmailAndPassword, signInWithGoogle, isEduEmail, firebaseAvailable, user } = useAuth();
+  const { signInWithEmailAndPassword, signInWithGoogle, isEduEmail, firebaseAvailable, user, error: authError } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +35,13 @@ Firebase auth available from context: ${firebaseAvailable ? "Yes" : "No"}
 Callback URL: ${callbackUrl}`);
   }, [user, firebaseAvailable, router, callbackUrl]);
 
+  // Update error state when auth context error changes
+  useEffect(() => {
+    if (authError) {
+      setError(authError);
+    }
+  }, [authError]);
+
   const handleEmailLogin = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -49,6 +56,12 @@ Callback URL: ${callbackUrl}`);
       }
 
       const result = await signInWithEmailAndPassword(email, password);
+      if (!result) {
+        // Error is already set in the auth context
+        setLoading(false);
+        return;
+      }
+      
       console.log("Email login successful, redirecting to:", callbackUrl);
       
       // Show a loading message
@@ -73,6 +86,13 @@ Callback URL: ${callbackUrl}`);
     try {
       console.log("Starting Google sign in...");
       const result = await signInWithGoogle();
+      
+      if (!result) {
+        // Error is already set in the auth context
+        setLoading(false);
+        return;
+      }
+      
       console.log("Google sign in successful:", result);
       
       // Show a loading message

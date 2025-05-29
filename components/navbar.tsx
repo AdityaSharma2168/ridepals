@@ -35,7 +35,7 @@ export default function Navbar() {
           <div className="flex items-center">
             <Link href="/" className="flex items-center">
               <Image src="/ridepals-logo.png" alt="ridepals.ai" width={40} height={40} className="mr-2" />
-              <span className="text-xl font-bold text-rose-600">ridepals.ai</span>
+              <span className="text-xl font-bold text-black">ridepals.ai</span>
             </Link>
           </div>
 
@@ -50,14 +50,11 @@ export default function Navbar() {
             <NavLink href="/my-rides" active={pathname === "/my-rides"}>
               My Rides
             </NavLink>
-            <NavLink href="/pitstops" active={pathname === "/pitstops"}>
-              Pit Stops
+            <NavLink href="/restaurants" active={pathname === "/restaurants"}>
+              Restaurants
             </NavLink>
             <NavLink href="/recurring" active={pathname === "/recurring"}>
               Recurring
-            </NavLink>
-            <NavLink href="/auth/test" active={pathname === "/auth/test"}>
-              Auth Test
             </NavLink>
           </div>
 
@@ -96,14 +93,11 @@ export default function Navbar() {
             <MobileNavLink href="/my-rides" active={pathname === "/my-rides"}>
               My Rides
             </MobileNavLink>
-            <MobileNavLink href="/pitstops" active={pathname === "/pitstops"}>
-              Pit Stops
+            <MobileNavLink href="/restaurants" active={pathname === "/restaurants"}>
+              Restaurants
             </MobileNavLink>
             <MobileNavLink href="/recurring" active={pathname === "/recurring"}>
               Recurring
-            </MobileNavLink>
-            <MobileNavLink href="/auth/test" active={pathname === "/auth/test"}>
-              Auth Test
             </MobileNavLink>
 
             {user ? (

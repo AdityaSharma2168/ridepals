@@ -3,12 +3,13 @@ import { getAuth, Auth, GoogleAuthProvider } from 'firebase/auth';
 
 // Hard-coded Firebase configuration for reliability
 const firebaseConfig = {
-  apiKey: "AIzaSyDc_xS5Hm1jHgypnq303qb-LPa9ocYb09E",
-  authDomain: "ridepalsai.firebaseapp.com",
-  projectId: "ridepalsai",
-  storageBucket: "ridepalsai.appspot.com",
-  messagingSenderId: "171518559632",
-  appId: "1:171518559632:web:5e17d9a8d0b53e2a91eae7"
+  apiKey: "AIzaSyA_g-njVOHXxvDzGDujqZGadrOsQqe87cQ",
+  authDomain: "ridepals-9490b.firebaseapp.com",
+  projectId: "ridepals-9490b",
+  storageBucket: "ridepals-9490b.appspot.com",
+  messagingSenderId: "41516656059",
+  appId: "1:41516656059:web:9f907c8227e591d903909e",
+  measurementId: "G-J5S7YKGYPN"
 };
 
 // Only initialize Firebase in the browser
@@ -16,7 +17,6 @@ const isBrowser = typeof window !== 'undefined';
 
 let firebaseApp: FirebaseApp | undefined;
 let firebaseAuth: Auth | undefined;
-let isDemoMode = false; // Track if we're in demo mode
 
 if (isBrowser) {
   try {
@@ -31,11 +31,17 @@ if (isBrowser) {
     // Initialize Firebase
     firebaseApp = initializeApp(firebaseConfig);
     firebaseAuth = getAuth(firebaseApp);
+    
+    // Configure Google Auth Provider
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({
+      prompt: 'select_account'
+    });
+    
     console.log("Firebase auth initialized successfully with app:", firebaseAuth?.app.name);
   } catch (error) {
     console.error("Error initializing Firebase:", error);
-    console.log("Falling back to demo mode");
-    isDemoMode = true;
+    throw error;
   }
 }
 
@@ -46,22 +52,19 @@ export const persistSession = async (idToken: string): Promise<boolean> => {
   try {
     console.log("Persisting session with backend...");
     
-    // If in demo mode, use a demo token
-    const tokenToUse = isDemoMode ? "demo-token" : idToken;
-    
     // Call our backend API to create a session
     const response = await fetch('/api/auth/login', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${tokenToUse}`
-      }
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ idToken })
     });
     
     if (!response.ok) {
-      const errorData = await response.text();
-      console.error('Failed to persist session:', errorData);
-      return false;
+      const errorData = await response.json();
+      console.error('Failed to persist session:', errorData.error);
+      throw new Error(errorData.error || 'Failed to persist session');
     }
     
     const data = await response.json();
@@ -77,12 +80,11 @@ export const persistSession = async (idToken: string): Promise<boolean> => {
     return true;
   } catch (error) {
     console.error('Error persisting session:', error);
-    return false;
+    throw error; // Propagate the error to be handled by the caller
   }
 };
 
 // Export the Firebase auth instance and a function to check if it's available
 export const auth = (isBrowser && firebaseAuth) ? firebaseAuth : null;
-export const isAuthAvailable = () => isBrowser && (!!firebaseApp && !!firebaseAuth || isDemoMode);
-export const isInDemoMode = () => isDemoMode;
+export const isAuthAvailable = () => isBrowser && !!firebaseApp && !!firebaseAuth;
 export { GoogleAuthProvider }; 

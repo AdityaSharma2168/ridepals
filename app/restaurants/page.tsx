@@ -11,7 +11,7 @@ import { Star, Search, MapPin, Clock, Coffee, Utensils, ShoppingBag } from "luci
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 
-export default function PitStopsPage() {
+export default function RestaurantsPage() {
   const [activeTab, setActiveTab] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
   const { user, loading: authLoading } = useAuth()
@@ -34,48 +34,26 @@ export default function PitStopsPage() {
   const pitStops = [
     {
       id: 1,
-      name: "Boba Guys",
-      category: "coffee",
+      name: "Spartans",
+      category: "food",
       image: "/placeholder.svg?height=200&width=200",
-      discount: "10% off any drink",
+      discount: "10% off any meal",
       rating: 4.8,
-      location: "University Avenue, Palo Alto",
-      hours: "9:00 AM - 9:00 PM",
-      description: "Premium bubble tea with organic ingredients and unique flavors.",
+      location: "Downtown San Jose",
+      hours: "10:00 AM - 10:00 PM",
+      description: "Popular local eatery known for hearty meals and a student-friendly vibe."
     },
     {
       id: 2,
-      name: "Coupa Café",
-      category: "coffee",
-      image: "/placeholder.svg?height=200&width=200",
-      discount: "Free cookie with purchase",
-      rating: 4.6,
-      location: "Lytton Avenue, Palo Alto",
-      hours: "7:00 AM - 7:00 PM",
-      description: "Venezuelan coffee shop with a variety of pastries and sandwiches.",
-    },
-    {
-      id: 3,
-      name: "Ike's Sandwiches",
+      name: "In-N-Out",
       category: "food",
       image: "/placeholder.svg?height=200&width=200",
-      discount: "$2 off any sandwich",
+      discount: "Free fries with any burger",
       rating: 4.7,
-      location: "Stanford Shopping Center",
-      hours: "10:00 AM - 8:00 PM",
-      description: "Creative sandwiches with unique combinations and flavors.",
-    },
-    {
-      id: 4,
-      name: "Stanford Bookstore",
-      category: "shopping",
-      image: "/placeholder.svg?height=200&width=200",
-      discount: "15% off Stanford merchandise",
-      rating: 4.5,
-      location: "White Plaza, Stanford",
-      hours: "9:00 AM - 6:00 PM",
-      description: "Official Stanford University bookstore with apparel, books, and gifts.",
-    },
+      location: "El Camino Real, Mountain View",
+      hours: "10:30 AM - 1:00 AM",
+      description: "Classic California burger chain famous for fresh ingredients and secret menu."
+    }
   ]
 
   const filteredPitStops = pitStops.filter(
@@ -103,13 +81,13 @@ export default function PitStopsPage() {
   return (
     <main className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">Pit Stops</h1>
+        <h1 className="text-3xl font-bold mb-6">Restaurants/Food Spots</h1>
 
         <div className="flex flex-col md:flex-row gap-4 mb-6">
           <div className="relative flex-grow">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
             <Input
-              placeholder="Search pit stops..."
+              placeholder="Search restaurants or food spots..."
               className="pl-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -178,7 +156,7 @@ export default function PitStopsPage() {
             {filteredPitStops.length === 0 && (
               <div className="text-center py-12">
                 <Coffee className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-xl font-medium mb-2">No pit stops found</h3>
+                <h3 className="text-xl font-medium mb-2">No restaurants or food spots found</h3>
                 <p className="text-gray-500">Try adjusting your search or filters</p>
               </div>
             )}

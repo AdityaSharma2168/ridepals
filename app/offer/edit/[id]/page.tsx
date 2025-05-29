@@ -32,31 +32,6 @@ const DAYS_OF_WEEK = [
   "Sunday"
 ];
 
-// Define available pit stops
-const AVAILABLE_PITSTOPS = [
-  {
-    id: "pitstop-boba",
-    name: "Boba Guys",
-    location: "University Avenue, Palo Alto",
-    discount: "10% off",
-    coordinates: { lat: 37.4470, lng: -122.1600 }, // Example coordinates
-  },
-  {
-    id: "pitstop-coupa",
-    name: "Coupa Café",
-    location: "Lytton Avenue, Palo Alto",
-    discount: "Free cookie",
-    coordinates: { lat: 37.4450, lng: -122.1630 }, // Example coordinates
-  },
-  {
-    id: "pitstop-ikes",
-    name: "Ike's Sandwiches",
-    location: "Stanford Shopping Center",
-    discount: "$2 off",
-    coordinates: { lat: 37.4410, lng: -122.1700 }, // Example coordinates
-  },
-];
-
 // Function to handle map distance/duration updates
 const handleDistanceUpdate = (newDistance: number, setDistance: React.Dispatch<React.SetStateAction<number>>) => {
   setDistance(newDistance);
@@ -118,12 +93,6 @@ export default function EditRidePage() {
   const [duration, setDuration] = useState<number>(0)
   const [calculatedPrice, setCalculatedPrice] = useState(5)  // Default example price
   
-  // Add state for selected pit stops
-  const [selectedPitStops, setSelectedPitStops] = useState<string[]>([])
-  
-  // Add a reference to store map markers
-  const [mapMarkers, setMapMarkers] = useState<any[]>([])
-  
   useEffect(() => {
     // Check if user is authenticated
     if (!authLoading && !user) {
@@ -177,11 +146,6 @@ export default function EditRidePage() {
             
             // Parse price
             setCalculatedPrice(ride.price_per_seat || 5);
-            
-            // Parse pit stops
-            if (ride.pit_stops && Array.isArray(ride.pit_stops)) {
-              setSelectedPitStops(ride.pit_stops.map((ps: any) => ps.id));
-            }
           } else {
             setError("Ride not found");
             toast({
@@ -218,41 +182,10 @@ export default function EditRidePage() {
     setCalculatedPrice(priceBreakdown.total);
   }, [distance, duration, priceBreakdown.total]);
   
-  // Handle pit stop selection
-  const handlePitStopToggle = (pitStopId: string) => {
-    if (selectedPitStops.includes(pitStopId)) {
-      setSelectedPitStops(selectedPitStops.filter(id => id !== pitStopId))
-    } else {
-      setSelectedPitStops([...selectedPitStops, pitStopId])
-    }
-  }
-  
-  // Update the route whenever pit stops change
-  useEffect(() => {
-    if (from && to && selectedPitStops.length > 0) {
-      console.log("Recalculating route with pit stops:", selectedPitStops);
-      // This would be where we update the route with the selected pit stops
-      // In a real implementation, we would pass these to the map component
-      // to recalculate the route
-    }
-  }, [from, to, selectedPitStops]);
-  
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
-    
-    // Get the selected pit stop details
-    const pitStops = selectedPitStops.map(pitStopId => {
-      const pitStop = AVAILABLE_PITSTOPS.find(ps => ps.id === pitStopId);
-      return pitStop ? {
-        id: pitStop.id,
-        name: pitStop.name,
-        location: pitStop.location,
-        discount: pitStop.discount,
-        coordinates: pitStop.coordinates
-      } : null;
-    }).filter(Boolean);
     
     try {
       // Get existing rides from localStorage
@@ -290,8 +223,6 @@ export default function EditRidePage() {
         },
         // Update available seats
         seats_total: parseInt(seats),
-        // Include selected pit stops
-        pit_stops: pitStops
       };
       
       // Update the ride in the array
@@ -484,36 +415,6 @@ export default function EditRidePage() {
                       </div>
                     </div>
 
-                    <div className="pt-2">
-                      <h3 className="text-lg font-medium mb-2">Pit Stop Options</h3>
-                      <p className="text-sm text-gray-500 mb-3 flex items-center">
-                        <Info className="h-4 w-4 mr-1" />
-                        Select a pit stop to earn rewards and help fellow students
-                      </p>
-
-                      <div className="space-y-2">
-                        {AVAILABLE_PITSTOPS.map((pitStop) => (
-                          <div key={pitStop.id} className="flex items-center space-x-2">
-                            <Checkbox 
-                              id={pitStop.id} 
-                              checked={selectedPitStops.includes(pitStop.id)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  handlePitStopToggle(pitStop.id);
-                                } else {
-                                  handlePitStopToggle(pitStop.id);
-                                }
-                              }}
-                            />
-                            <Label htmlFor={pitStop.id} className="flex items-center">
-                              <Coffee className="h-4 w-4 mr-2 text-rose-500" />
-                              {pitStop.name} ({pitStop.discount})
-                            </Label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
                     <div className="pt-2 border-t">
                       <div className="flex items-center justify-between mb-4">
                         <div>
@@ -573,25 +474,6 @@ export default function EditRidePage() {
                     onDurationUpdate={(newDuration) => handleDurationUpdate(newDuration, setDuration)}
                     startLocation={from}
                     endLocation={to}
-                    pitStops={selectedPitStops
-                      .map(id => {
-                        const stop = AVAILABLE_PITSTOPS.find(p => p.id === id);
-                        return stop ? {
-                          id: stop.id,
-                          name: stop.name,
-                          location: stop.location,
-                          discount: stop.discount,
-                          coordinates: stop.coordinates
-                        } : null;
-                      })
-                      .filter((stop): stop is {
-                        id: string;
-                        name: string;
-                        location: string;
-                        discount: string;
-                        coordinates: { lat: number; lng: number };
-                      } => stop !== null)
-                    }
                   />
                 </div>
 

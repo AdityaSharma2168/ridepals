@@ -68,7 +68,6 @@ type MapProps = {
   onDurationUpdate?: (durationMinutes: number) => void
   startLocation?: string
   endLocation?: string
-  pitStops?: PitStop[] // New prop for pit stops
 }
 
 // Function to calculate distance between two coordinates using the Haversine formula
@@ -217,10 +216,9 @@ export default function RideMap({
   onDurationUpdate,
   startLocation,
   endLocation,
-  pitStops = [] // Default to empty array
 }: MapProps) {
   const [markers, setMarkers] = useState<MapMarker[]>([])
-  const [markerType, setMarkerType] = useState<"start" | "end" | "pitstop">("start")
+  const [markerType, setMarkerType] = useState<"start" | "end">("start")
   const [searchQuery, setSearchQuery] = useState("")
   const [isSearching, setIsSearching] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -324,38 +322,6 @@ export default function RideMap({
     }
   }, [startLocation, endLocation]);
 
-  // Add pit stops to the map when they are selected
-  useEffect(() => {
-    if (!startLocation || !endLocation) return; // Skip if no start/end points defined
-    
-    if (pitStops && pitStops.length > 0) {
-      // Create markers for each pit stop
-      const pitStopMarkers = pitStops.map((stop, index) => ({
-        id: Date.now() + 500 + index,
-        type: "pitstop" as const,
-        lat: stop.coordinates.lat,
-        lng: stop.coordinates.lng,
-        label: stop.name,
-        address: stop.location
-      }));
-      
-      // Add the new pit stop markers to the map, preserving start, end and college markers
-      setMarkers(prev => {
-        // Keep start, end, and college markers
-        const existingMarkers = prev.filter(
-          m => m.type === "start" || m.type === "end" || m.type === "college"
-        );
-        
-        return [...existingMarkers, ...pitStopMarkers];
-      });
-      
-      // Notify parent of marker additions
-      pitStopMarkers.forEach(marker => {
-        if (onMarkerAdd) onMarkerAdd(marker);
-      });
-    }
-  }, [pitStops]);
-
   // Handle map click to add a marker
   const handleMapClick = (lat: number, lng: number) => {
     if (!interactive) return;
@@ -366,7 +332,7 @@ export default function RideMap({
       type: markerType,
       lat,
       lng,
-      label: markerType === "start" ? "Start" : markerType === "end" ? "Destination" : "Pit Stop"
+      label: markerType === "start" ? "Start" : "Destination"
     };
     
     // Update markers (replace if start/end)
@@ -380,9 +346,6 @@ export default function RideMap({
     // Update UI after adding start
     if (markerType === "start") {
       setMarkerType("end");
-    } else if (markerType === "end") {
-      // After end is placed, switch to pitstop for any additional points
-      setMarkerType("pitstop");
     }
     
     // Notify parent
@@ -418,9 +381,6 @@ export default function RideMap({
         // Update UI after adding start
         if (markerType === "start") {
           setMarkerType("end");
-        } else if (markerType === "end") {
-          // After end is placed, switch to pitstop for any additional points
-          setMarkerType("pitstop");
         }
         
         if (onMarkerAdd) onMarkerAdd(newMarker);
@@ -510,14 +470,6 @@ export default function RideMap({
               Start
             </Button>
             <Button
-              className={`p-2 flex-1 ${markerType === "pitstop" ? "bg-amber-500 hover:bg-amber-600" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}`}
-              onClick={() => setMarkerType("pitstop")}
-            title="Add pit stop"
-          >
-              <Coffee size={16} className="mr-2" />
-              Pit Stop
-            </Button>
-            <Button
               className={`p-2 flex-1 ${markerType === "end" ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}`}
               onClick={() => setMarkerType("end")}
             title="Add destination"
@@ -580,7 +532,7 @@ export default function RideMap({
           )}
           
           <div className="text-xs text-center text-gray-500 mt-1">
-            Click directly on the map to place {markerType === "start" ? "start" : markerType === "end" ? "end" : "pit stop"} point
+            Click directly on the map to place {markerType === "start" ? "start" : "end"} point
           </div>
         </div>
       )}
@@ -679,10 +631,6 @@ export default function RideMap({
         <div className="flex items-center mb-1">
           <div className="w-3 h-3 rounded-full bg-rose-500 mr-1"></div>
           <span>Start</span>
-        </div>
-        <div className="flex items-center mb-1">
-          <div className="w-3 h-3 rounded-full bg-amber-500 mr-1"></div>
-          <span>Pit Stop</span>
         </div>
         <div className="flex items-center mb-1">
           <div className="w-3 h-3 rounded-full bg-blue-500 mr-1"></div>

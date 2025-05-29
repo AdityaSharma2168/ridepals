@@ -1,15 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
     // Clear the session cookie
-    cookies().delete("__session");
+    const cookieStore = await cookies();
+    cookieStore.delete("__session");
     
-    return NextResponse.json({ 
+    // Create response with cleared cookie
+    const response = NextResponse.json({ 
       success: true,
       message: "Logged out successfully"
     });
+
+    // Also set the cookie in the response to ensure it's cleared
+    response.cookies.delete("__session");
+    
+    return response;
   } catch (error: any) {
     console.error("Error in logout API:", error.message);
     
