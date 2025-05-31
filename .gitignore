@@ -25,3 +25,4 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.tslib/firebase/service-account.json
+lib/firebase/service-account.json
