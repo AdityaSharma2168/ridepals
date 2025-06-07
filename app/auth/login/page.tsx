@@ -9,10 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { isAuthAvailable } from "@/lib/firebase/client";
 
 export default function LoginPage() {
-  const { signInWithEmailAndPassword, signInWithGoogle, isEduEmail, firebaseAvailable, user, error: authError } = useAuth();
+  const { signInWithEmailAndPassword, signInWithGoogle, isEduEmail, user, error: authError } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -30,10 +29,10 @@ export default function LoginPage() {
     }
     
     // Add debug information
-    setAuthDebug(`Firebase auth available from raw check: ${isAuthAvailable() ? "Yes" : "No"}
-Firebase auth available from context: ${firebaseAvailable ? "Yes" : "No"}
-Callback URL: ${callbackUrl}`);
-  }, [user, firebaseAvailable, router, callbackUrl]);
+    setAuthDebug(`Auth system: Supabase
+Callback URL: ${callbackUrl}
+User: ${user ? 'Logged in' : 'Not logged in'}`);
+  }, [user, router, callbackUrl]);
 
   // Update error state when auth context error changes
   useEffect(() => {
@@ -80,31 +79,33 @@ Callback URL: ${callbackUrl}`);
   };
 
   const handleGoogleLogin = async () => {
+    console.log("🚀 Google login button clicked!");
     setError(null);
     setLoading(true);
+    setAuthDebug("Starting Google sign-in...");
 
     try {
-      console.log("Starting Google sign in...");
+      console.log("Calling signInWithGoogle function...");
       const result = await signInWithGoogle();
       
+      console.log("SignInWithGoogle result:", result);
+      
       if (!result) {
-        // Error is already set in the auth context
+        console.log("No result returned from signInWithGoogle");
+        setAuthDebug("Google sign-in failed - no result returned");
         setLoading(false);
         return;
       }
       
       console.log("Google sign in successful:", result);
+      setAuthDebug("Google sign-in successful! Redirecting to OAuth...");
       
-      // Show a loading message
-      setAuthDebug("Login successful! Redirecting...");
-      
-      // Add a small delay to ensure cookies are set
-      setTimeout(() => {
-        router.push(callbackUrl);
-      }, 1000);
+      // Note: For OAuth flow, the user will be redirected to Google
+      // and then back to our callback URL, so we don't need to manually redirect here
     } catch (error: any) {
       console.error("Google sign in error:", error);
       setError(error.message || "An error occurred during Google sign in");
+      setAuthDebug("Google sign-in error: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -196,7 +197,7 @@ Callback URL: ${callbackUrl}`);
               />
               <path d="M1 1h22v22H1z" fill="none" />
             </svg>
-            Sign in with Google
+            {loading ? "Signing in..." : "Sign in with Google"}
           </Button>
         </CardContent>
         <CardFooter className="flex justify-center">

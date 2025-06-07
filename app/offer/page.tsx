@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/components/ui/use-toast"
 import { useCollege } from "@/contexts/college-context"
 import { useAuth } from "@/contexts/auth-context"
+import { createRide, checkUserDriverStatus, makeCurrentUserDriver } from "@/lib/supabase/client"
 
 // Define ride pricing constants
 const BASE_FARE = 5.00;                // Base fare for all rides
@@ -116,67 +117,68 @@ export default function OfferRidePage() {
     setCalculatedPrice(priceBreakdown.total);
   }, [distance, duration, priceBreakdown.total]);
   
-  // Handle form submission
+  // Handle form submission with Supabase
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
     
-    // Create a formatted ride object
-    const newRide = {
-      id: `ride-${Date.now()}`,
-      from_location: from,
-      to_location: to,
-      departure_time: `${date}T${time}:00`,
-      seats_available: parseInt(seats),
-      price_per_seat: calculatedPrice,
-      description: `Ride from ${from} to ${to}`,
-      status: "active",
-      is_intercampus: to.toLowerCase().includes("campus") && from.toLowerCase().includes("campus"),
-      is_recurring: isRecurring,
-      recurring_days: isRecurring ? selectedDays : [],
-      created_at: new Date().toISOString(),
-      // Store college-specific information
-      college: {
-        id: selectedCollege?.id || "unknown",
-        name: selectedCollege?.name || "Unknown College",
-        abbreviation: selectedCollege?.abbreviation || "UC",
-      },
-      // Store route information
-      route: {
-        distance_miles: distance,
-        duration_minutes: duration,
-        start_coords: { /* This would come from the actual map component */ },
-        end_coords: { /* This would come from the actual map component */ },
-      },
-      // Store available seats for booking
-      seats_total: parseInt(seats),
-      seats_booked: 0,
-      passengers: [],
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to offer a ride.",
+        variant: "destructive",
+      })
+      return
     }
     
-    // Simulate submission delay
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Log for debugging
-    console.log("Submitting ride:", newRide)
+    setIsSubmitting(true)
     
     try {
-      // Save the ride to local storage
-      const existingRidesJSON = localStorage.getItem('offeredRides')
-      const existingRides = existingRidesJSON ? JSON.parse(existingRidesJSON) : []
-      localStorage.setItem('offeredRides', JSON.stringify([...existingRides, newRide]))
+      // Create ride data for Supabase
+      const rideData = {
+        driver_id: user.id,
+        origin: from,
+        destination: to,
+        departure_time: `${date}T${time}:00`,
+        available_seats: parseInt(seats.split(' ')[0]), // Extract number from "2 seats"
+        price_per_seat: Math.round(calculatedPrice * 100) / 100, // Round to 2 decimal places
+        status: 'active' as const,
+        // For now, we'll store coordinates as null - you can add map integration later
+        origin_coordinates: null,
+        destination_coordinates: null,
+      }
       
-      // Show success toast and redirect
-      toast({
-        title: "Ride offered successfully!",
-        description: "Your ride has been posted and is now available to passengers.",
-        duration: 5000,
-      })
+      console.log("Creating ride in Supabase:", rideData)
       
-      // Redirect to my rides page
-      router.push('/my-rides')
+      // Save the ride to Supabase
+      console.log("🔄 Starting createRide function...")
+      const result = await createRide(rideData)
+      console.log("🔄 createRide function completed, result:", result)
+      
+      if (result.data && !result.error) {
+        console.log("✅ Ride created successfully, showing success toast")
+        // Show success toast and redirect
+        toast({
+          title: "Ride offered successfully!",
+          description: "Your ride has been posted and is now available to passengers.",
+          duration: 5000,
+        })
+        
+        // Redirect to my rides page
+        router.push('/my-rides')
+      } else {
+        // Show specific error message
+        const errorMessage = result.error || "Failed to create ride"
+        console.error("❌ Ride creation failed:", errorMessage)
+        
+        toast({
+          title: "Error offering ride",
+          description: errorMessage,
+          variant: "destructive",
+          duration: 7000,
+        })
+      }
     } catch (error) {
-      console.error("Error saving ride:", error)
+      console.error("Error creating ride:", error)
       toast({
         title: "Error offering ride",
         description: "There was an error posting your ride. Please try again.",
@@ -230,6 +232,48 @@ export default function OfferRidePage() {
             <Card>
               <CardContent className="p-6">
                 <h2 className="text-xl font-semibold mb-4">Ride Details</h2>
+
+                {/* Debug Section */}
+                <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <h3 className="text-sm font-medium text-yellow-800 mb-2">🔧 Debug Tools</h3>
+                  <div className="flex gap-2">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm"
+                      onClick={async () => {
+                        const status = await checkUserDriverStatus()
+                        console.log('Driver status check:', status)
+                        toast({
+                          title: "Driver Status",
+                          description: status.error 
+                            ? `Error: ${status.error}` 
+                            : `Is Driver: ${status.isDriver}, Profile exists: ${!!status.profile}`,
+                          variant: status.error ? "destructive" : "default",
+                          duration: 5000,
+                        })
+                      }}
+                    >
+                      Check Driver Status
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm"
+                      onClick={async () => {
+                        const success = await makeCurrentUserDriver()
+                        toast({
+                          title: success ? "Success" : "Error",
+                          description: success ? "You are now a driver!" : "Failed to make you a driver. Check console for details.",
+                          variant: success ? "default" : "destructive",
+                          duration: 5000,
+                        })
+                      }}
+                    >
+                      Make Me Driver
+                    </Button>
+                  </div>
+                </div>
 
                 <form className="space-y-6" onSubmit={handleSubmit}>
                   <div className="space-y-4">

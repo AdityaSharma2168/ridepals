@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { createClient } from '@/lib/supabase/server'
 
 // Define routes that require authentication
 const PROTECTED_ROUTES = [
@@ -6,7 +7,7 @@ const PROTECTED_ROUTES = [
   "/offer",
   "/profile",
   "/recurring",
-  "/pitstops",
+  "/restaurants",
 ];
 
 // Define routes that should redirect to home if already authenticated
@@ -17,47 +18,66 @@ function logAuthInfo(req: NextRequest, message: string) {
   console.log(`[Auth Middleware] ${message} - Path: ${req.nextUrl.pathname}`);
 }
 
-export default function middleware(req: NextRequest) {
+export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   
-  // Get the Firebase session cookie
-  const session = req.cookies.get("__session")?.value;
-  const isAuthenticated = !!session;
+  // Log all cookies for debugging
+  const allCookies = req.cookies.getAll();
+  const cookieNames = allCookies.map(c => c.name).join(', ');
+  logAuthInfo(req, `All cookies: ${cookieNames}`);
   
-  // Log authentication status for debugging
-  logAuthInfo(req, `Auth status: ${isAuthenticated ? "Authenticated" : "Not authenticated"}`);
-  logAuthInfo(req, `Cookie: ${session ? "Present" : "Not present"}`);
+  // Create Supabase client with proper SSR cookie handling
+  const { supabase, response } = createClient(req);
   
-  // No authentication check for homepage and non-protected routes
-  if (pathname === "/" || (!PROTECTED_ROUTES.some(route => pathname.startsWith(route)) && !AUTH_ROUTES.includes(pathname))) {
+  // Check user authentication using proper SSR client
+  let isAuthenticated = false;
+  let user = null;
+  
+  try {
+    const { data: { user: authUser }, error } = await supabase.auth.getUser();
+    user = authUser;
+    isAuthenticated = !!authUser && !error;
+    
+    logAuthInfo(req, `✅ SSR Auth check - Authenticated: ${isAuthenticated}, User: ${user?.email || 'none'}, Error: ${error?.message || 'none'}`);
+  } catch (err: any) {
+    logAuthInfo(req, `❌ SSR Auth check failed: ${err.message}`);
+    isAuthenticated = false;
+  }
+  
+  // No authentication check for homepage, auth callback, and non-protected routes
+  if (pathname === "/" || 
+      pathname.startsWith("/auth/callback") ||
+      pathname.startsWith("/_next") ||
+      pathname.startsWith("/api") ||
+      pathname.includes(".")) { // Static files
     logAuthInfo(req, "Public route - proceeding without auth check");
-    return NextResponse.next();
+    return response;
   }
 
   // Check if the route is a protected route and user is not authenticated
   if (PROTECTED_ROUTES.some((route) => pathname.startsWith(route)) && !isAuthenticated) {
-    logAuthInfo(req, `Protected route accessed without authentication - redirecting to login`);
+    logAuthInfo(req, `🔒 Protected route accessed without authentication - redirecting to login`);
     // Redirect to login page with the current URL as callback URL
     const url = new URL("/auth/login", req.url);
     url.searchParams.set("callbackUrl", pathname);
-    return NextResponse.redirect(url);
+    return Response.redirect(url);
   }
 
   // Check if the route is an auth route and user is already authenticated
   if (AUTH_ROUTES.includes(pathname) && isAuthenticated) {
     const callbackUrl = req.nextUrl.searchParams.get("callbackUrl");
-    logAuthInfo(req, `Auth route accessed while authenticated - redirecting to ${callbackUrl || "home"}`);
+    logAuthInfo(req, `🏠 Auth route accessed while authenticated - redirecting to ${callbackUrl || "home"}`);
     
     // Redirect to home page or the callbackUrl if present
     if (callbackUrl) {
-      return NextResponse.redirect(new URL(callbackUrl, req.url));
+      return Response.redirect(new URL(callbackUrl, req.url));
     }
-    return NextResponse.redirect(new URL("/", req.url));
+    return Response.redirect(new URL("/", req.url));
   }
 
   // Continue with the request
-  logAuthInfo(req, "Proceeding with request");
-  return NextResponse.next();
+  logAuthInfo(req, "✅ Proceeding with request");
+  return response;
 }
 
 // Configure middleware to run on specific paths
@@ -68,6 +88,6 @@ export const config = {
      * - api routes (starts with /api/)
      * - static files (/_next/, /images/, /fonts/, /favicon.ico, etc.)
      */
-    "/((?!api|_next|images|fonts|favicon.ico).*)",
+    "/((?!api|_next|images|fonts|favicon.ico|.*\\.).*)",
   ],
 }; 

@@ -18,9 +18,9 @@ export default function RestaurantsPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Redirect if not authenticated
     if (!authLoading && !user) {
-      router.push('/auth/login?callbackUrl=/pitstops')
+      router.push('/auth/login?callbackUrl=/restaurants')
+      return
     }
   }, [user, authLoading, router])
 

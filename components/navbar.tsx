@@ -104,11 +104,11 @@ export default function Navbar() {
               <div className="py-2">
                 <div className="flex items-center py-2 px-4">
                   <Avatar className="h-8 w-8 mr-2">
-                    <AvatarImage src={user.photoURL || ""} alt={user.displayName || "User"} />
-                    <AvatarFallback>{user.displayName?.[0] || user.email?.[0] || "U"}</AvatarFallback>
+                    <AvatarImage src={user.user_metadata?.avatar_url || ""} alt={user.user_metadata?.full_name || "User"} />
+                    <AvatarFallback>{user.user_metadata?.full_name?.[0] || user.email?.[0] || "U"}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <p className="text-sm font-medium">{user.displayName || user.email?.split("@")[0]}</p>
+                    <p className="text-sm font-medium">{user.user_metadata?.full_name || user.email?.split("@")[0]}</p>
                     <p className="text-xs text-gray-500">{user.email}</p>
                   </div>
                 </div>
@@ -147,20 +147,20 @@ function UserDropdownMenu({ user, signOut }: { user: any; signOut: () => Promise
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center rounded-full hover:bg-gray-100 p-1 transition-colors duration-200">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={user.photoURL || ""} alt={user.displayName || "User"} />
-            <AvatarFallback>{user.displayName?.[0] || user.email?.[0] || "U"}</AvatarFallback>
-          </Avatar>
-        </button>
+        <Avatar className="h-8 w-8 cursor-pointer">
+          <AvatarImage src={user.user_metadata?.avatar_url || ""} alt={user.user_metadata?.full_name || "User"} />
+          <AvatarFallback>{user.user_metadata?.full_name?.[0] || user.email?.[0] || "U"}</AvatarFallback>
+        </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium">{user.displayName || user.email?.split("@")[0]}</p>
-            <p className="text-xs font-normal text-gray-500">{user.email}</p>
+        <div className="flex items-center justify-start gap-2 p-2">
+          <div className="flex flex-col space-y-1 leading-none">
+            <p className="text-sm font-medium">{user.user_metadata?.full_name || user.email?.split("@")[0]}</p>
+            <p className="w-[200px] truncate text-xs text-muted-foreground">
+              {user.email}
+            </p>
           </div>
-        </DropdownMenuLabel>
+        </div>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <Link href="/profile">

@@ -10,6 +10,7 @@ import { useCollege } from "@/contexts/college-context"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
+import { supabase } from "@/lib/supabase/client"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -92,92 +93,109 @@ export default function MyRidesPage() {
   const fetchMyRides = async () => {
     setLoading(true);
     try {
-      // Try to load offered rides from localStorage (only if in browser)
-      let storedRides = [];
-      let storedBookings = [];
-      if (typeof window !== 'undefined') {
-        try {
-          // Debug localStorage
-          console.log("All localStorage keys:", Object.keys(localStorage));
-          
-          // Get offered rides
-          const storedRidesJSON = localStorage.getItem('offeredRides');
-          console.log("Raw offered rides data:", storedRidesJSON);
-          
-          if (storedRidesJSON) {
-            storedRides = JSON.parse(storedRidesJSON);
-            console.log("Loaded offered rides from localStorage:", storedRides);
-          } else {
-            console.log("No offered rides found in localStorage");
-          }
-          
-          // Get booked rides
-          const storedBookingsJSON = localStorage.getItem('rideBookings');
-          console.log("Raw booked rides data:", storedBookingsJSON);
-          
-          if (storedBookingsJSON) {
-            storedBookings = JSON.parse(storedBookingsJSON);
-            console.log("Loaded booked rides from localStorage:", storedBookings);
-          } else {
-            console.log("No booked rides found in localStorage");
-          }
-        } catch (error) {
-          console.error("Error loading data from localStorage:", error);
-        }
+      if (!user) {
+        console.log("User not authenticated, cannot fetch rides");
+        return;
       }
-      
-      // Combine with demo rides if there are no stored rides
-      const exampleRides = [
-        {
-          id: "fake-1",
-          from_location: `${selectedCollege?.abbreviation || 'Campus'} Campus`,
-          to_location: "Downtown",
-          departure_time: "2025-05-01T17:30:00",
-          seats_available: 2,
-          price_per_seat: 5,
-          status: "active",
-          is_intercampus: false,
-          description: "Quick ride to downtown"
-        },
-        {
-          id: "fake-2", 
-          from_location: `${selectedCollege?.abbreviation || 'Campus'} Campus`,
-          to_location: "Berkeley Campus",
-          departure_time: "2025-05-03T10:00:00", 
-          seats_available: 3,
-          price_per_seat: 12,
-          status: "active",
-          is_intercampus: true,
-          description: "Weekend trip to Berkeley"
-        }
-      ];
-      
-      // Use stored rides if available, otherwise use example rides
-      setDriverRides(storedRides.length > 0 ? storedRides : exampleRides);
-      
-      // Example booking - use only if no bookings found in localStorage
-      const exampleBooking = [
-        {
-          id: "booking-1",
-          ride_id: "ride-1",
-          seats_booked: 1,
-          status: "confirmed",
-          payment_status: "paid",
+
+      console.log("🔍 Fetching rides for user:", user.id);
+
+      // Fetch rides where the current user is the driver
+      const { data: driverRidesData, error: driverError } = await supabase
+        .from('rides')
+        .select(`
+          *,
+          driver:users!fk_driver(*)
+        `)
+        .eq('driver_id', user.id)
+        .order('departure_time', { ascending: true });
+
+      if (driverError) {
+        console.error("❌ Error fetching driver rides:", driverError);
+        throw new Error(`Failed to fetch your rides: ${driverError.message}`);
+      }
+
+      console.log("✅ Driver rides fetched:", driverRidesData);
+
+      // Transform database rides to match UI format
+      const transformedDriverRides = (driverRidesData || []).map(ride => ({
+        id: ride.id,
+        from_location: ride.origin,
+        to_location: ride.destination,
+        departure_time: ride.departure_time,
+        seats_available: ride.available_seats,
+        price_per_seat: ride.price_per_seat,
+        description: ride.notes,
+        status: ride.status || 'active',
+        is_intercampus: ride.origin.toLowerCase().includes('campus') && ride.destination.toLowerCase().includes('campus'),
+      }));
+
+      setDriverRides(transformedDriverRides);
+
+      // Fetch rides where the current user has bookings
+      const { data: bookingsData, error: bookingsError } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('rider_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (bookingsError) {
+        console.error("❌ Error fetching bookings:", bookingsError);
+        // Don't throw error for bookings, just log it
+        setPassengerBookings([]);
+      } else {
+        console.log("✅ Bookings fetched:", bookingsData);
+
+        // Transform database bookings to match UI format
+        const transformedBookings = (bookingsData || []).map(booking => ({
+          id: booking.id,
+          ride_id: booking.ride_id,
+          seats_booked: booking.seats_booked,
+          status: booking.status,
+          payment_status: 'paid', // Assuming paid for now
           ride: {
-            id: "ride-1",
-            from_location: "Stanford Campus",
-            to_location: `${selectedCollege?.abbreviation || 'Campus'} Campus`,
-            departure_time: "2025-05-02T14:00:00",
-            seats_available: 1,
-            price_per_seat: 8,
-            status: "active",
-            is_intercampus: true
+            id: booking.ride_id,
+            from_location: 'Loading...', // We'll fetch ride details separately
+            to_location: 'Loading...',
+            departure_time: new Date().toISOString(),
+            seats_available: 0,
+            price_per_seat: 0,
+            status: 'active',
+            is_intercampus: false,
           }
-        }
-      ];
+        }));
+
+        setPassengerBookings(transformedBookings);
+      }
+
+      // Show demo data if no real data is found
+      if (transformedDriverRides.length === 0) {
+        console.log("📝 No real rides found, showing demo data");
+        const exampleRides = [
+          {
+            id: "demo-1",
+            from_location: `${selectedCollege?.abbreviation || 'Campus'} Campus`,
+            to_location: "Downtown",
+            departure_time: "2025-05-01T17:30:00",
+            seats_available: 2,
+            price_per_seat: 5,
+            status: "active",
+            is_intercampus: false,
+            description: "Demo ride - create a real ride using the 'Offer a Ride' button above!"
+          }
+        ];
+        setDriverRides(exampleRides);
+      }
+
+    } catch (error) {
+      console.error("💥 Error in fetchMyRides:", error);
+      setError(error instanceof Error ? error.message : "Failed to load rides");
       
-      // Use stored bookings if available, otherwise use example booking
-      setPassengerBookings(storedBookings.length > 0 ? storedBookings : exampleBooking);
+      toast({
+        title: "Error Loading Rides",
+        description: "Failed to load your rides. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

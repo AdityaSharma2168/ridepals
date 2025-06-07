@@ -14,12 +14,26 @@ import { useCollege } from "@/contexts/college-context"
 import { useAuth } from "@/contexts/auth-context"
 import { format } from "date-fns"
 import { toast } from "@/components/ui/use-toast"
+import { supabase, searchRides, searchRidesWithDistance } from "@/lib/supabase/client"
 
-// API base URL
-const API_BASE_URL = "http://localhost:8000";
-
-// Type for ride data
+// Type for ride data from Supabase
 type Ride = {
+  id: string
+  driver_id: string
+  origin: string
+  destination: string
+  departure_time: string
+  available_seats: number
+  price_per_seat: number
+  status: 'active' | 'completed' | 'cancelled'
+  driver?: {
+    full_name: string
+    college_id: string
+  }
+}
+
+// Type for display (keeping compatibility with existing UI)
+type DisplayRide = {
   id: string
   from: string
   to: string
@@ -32,55 +46,109 @@ type Ride = {
     rating: number
     college: string
   }
-  pitStop?: {
-    name: string
-    discount: string
-  }
   isIntercampus: boolean
-  distance?: number // Distance in miles from the search location
+  distance?: number
 }
 
 export default function FindRidePage() {
   const { selectedCollege, nearbyColleges } = useCollege()
   const { user } = useAuth()
-  const [rides, setRides] = useState<Ride[]>([])
-  const [filteredRides, setFilteredRides] = useState<Ride[]>([])
+  const [rides, setRides] = useState<DisplayRide[]>([])
+  const [filteredRides, setFilteredRides] = useState<DisplayRide[]>([])
   const [activeTab, setActiveTab] = useState("all")
   const [includeIntercampus, setIncludeIntercampus] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
-  const [maxDistance, setMaxDistance] = useState(10) // Default max distance of 10 miles
+  const [maxDistance, setMaxDistance] = useState(10)
   const [startLocation, setStartLocation] = useState("")
   const [date, setDate] = useState("")
   const [minSeats, setMinSeats] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [searchError, setSearchError] = useState<string | null>(null)
   const [hasSearched, setHasSearched] = useState(false)
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null)
+  const [locationError, setLocationError] = useState<string | null>(null)
 
-  // Fetch rides from the backend API when component mounts
+  // Fetch rides from Supabase when component mounts
   useEffect(() => {
-    fetchInitialRides();
+    fetchRidesFromSupabase();
+    // Get user location for distance-based search
+    getUserLocation();
   }, [selectedCollege]);
 
-  // Fetch initial rides when component loads
-  const fetchInitialRides = async () => {
+  // Get user's current location
+  const getUserLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+          setLocationError(null);
+        },
+        (error) => {
+          console.log('Location access denied or unavailable:', error);
+          setLocationError('Location access denied. Distance-based search unavailable.');
+        }
+      );
+    } else {
+      setLocationError('Geolocation is not supported by this browser.');
+    }
+  };
+
+  // Convert Supabase ride to display format
+  const convertToDisplayRide = (ride: Ride): DisplayRide => {
+    const departureDate = new Date(ride.departure_time)
+    
+    return {
+      id: ride.id,
+      from: ride.origin,
+      to: ride.destination,
+      date: formatRideDate(ride.departure_time),
+      time: formatRideTime(ride.departure_time),
+      seats: ride.available_seats,
+      price: ride.price_per_seat,
+      driver: {
+        name: ride.driver?.full_name || 'Unknown Driver',
+        rating: 4.8, // Default rating for now
+        college: selectedCollege?.abbreviation || 'Unknown',
+      },
+      isIntercampus: false, // We'll determine this based on origin/destination
+      distance: Math.random() * 10, // Mock distance for now
+    }
+  }
+
+  // Fetch rides from Supabase
+  const fetchRidesFromSupabase = async () => {
     try {
       setIsLoading(true);
-      
-      // Skip the actual API call and go straight to demo data
-      // This avoids the error when API is not available
-      console.log("Using demo data for rides");
-      generateDemoRides();
       setSearchError(null);
+      
+      console.log("Fetching rides from Supabase...");
+      
+      const supabaseRides = await searchRides({
+        // Add any initial filters here
+      });
+      
+      if (supabaseRides && supabaseRides.length > 0) {
+        const displayRides = supabaseRides.map(convertToDisplayRide);
+        setRides(displayRides);
+        setFilteredRides(displayRides);
+        console.log(`Loaded ${displayRides.length} rides from Supabase`);
+      } else {
+        console.log("No rides found in Supabase, using demo data");
+        generateDemoRides();
+      }
     } catch (error) {
-      console.error('Error fetching rides:', error);
-      setSearchError('Could not load rides. Using demo data instead.');
+      console.error('Error fetching rides from Supabase:', error);
+      setSearchError('Could not load rides from database. Using demo data instead.');
       generateDemoRides();
     } finally {
       setIsLoading(false);
     }
   };
-  
-  // Helper function to format API date string to our format
+
+  // Helper function to format date string
   const formatRideDate = (dateTimeString: string) => {
     const date = new Date(dateTimeString);
     const today = new Date();
@@ -96,7 +164,7 @@ export default function FindRidePage() {
     }
   };
   
-  // Helper function to format API time string to our format
+  // Helper function to format time string
   const formatRideTime = (dateTimeString: string) => {
     const date = new Date(dateTimeString);
     return format(date, 'h:mm a');
@@ -105,9 +173,9 @@ export default function FindRidePage() {
   // Generate demo rides as a fallback
   const generateDemoRides = () => {
     // Local rides for the selected college
-    const localRides: Ride[] = [
+    const localRides: DisplayRide[] = [
       {
-        id: "1",
+        id: "demo-1",
         from: `${selectedCollege?.abbreviation || 'Campus'} Dorms`,
         to: `${selectedCollege?.location || 'Local'} Downtown`,
         date: "Today",
@@ -119,15 +187,11 @@ export default function FindRidePage() {
           rating: 4.9,
           college: selectedCollege?.abbreviation || 'Campus',
         },
-        pitStop: {
-          name: "Boba Guys",
-          discount: "10% off",
-        },
         isIntercampus: false,
-        distance: 0.3, // Mock distance in miles
+        distance: 0.3,
       },
       {
-        id: "2",
+        id: "demo-2",
         from: `${selectedCollege?.abbreviation || 'Campus'} Campus`,
         to: "Trader Joe's",
         date: "Today",
@@ -140,10 +204,10 @@ export default function FindRidePage() {
           college: selectedCollege?.abbreviation || 'Campus',
         },
         isIntercampus: false,
-        distance: 1.8, // Mock distance in miles
+        distance: 1.8,
       },
       {
-        id: "3",
+        id: "demo-3",
         from: `${selectedCollege?.location || 'Local'} Shopping Center`,
         to: `${selectedCollege?.abbreviation || 'Campus'} Campus`,
         date: "Tomorrow",
@@ -155,19 +219,15 @@ export default function FindRidePage() {
           rating: 4.8,
           college: selectedCollege?.abbreviation || 'Campus',
         },
-        pitStop: {
-          name: "Coupa Café",
-          discount: "Free cookie",
-        },
         isIntercampus: false,
-        distance: 3.5, // Mock distance in miles
+        distance: 3.5,
       },
     ]
 
     // Intercampus rides
-    const intercampusRides: Ride[] = nearbyColleges
+    const intercampusRides: DisplayRide[] = nearbyColleges
       .map((college, index) => ({
-        id: `intercampus-${index}`,
+        id: `demo-intercampus-${index}`,
         from: `${college.abbreviation} Campus`,
         to: `${selectedCollege?.abbreviation || 'Campus'} Campus`,
         date: index === 0 ? "Tomorrow" : "Friday",
@@ -180,46 +240,62 @@ export default function FindRidePage() {
           college: college.abbreviation,
         },
         isIntercampus: true,
-        distance: 5 + index * 2, // Mock distance in miles
+        distance: 5 + index * 2,
       }))
-      .slice(0, 3) // Limit to 3 intercampus rides
+      .slice(0, 3)
 
     const newRides = [...localRides, ...intercampusRides]
     setRides(newRides)
     setFilteredRides(newRides)
   }
 
-  // Handle search with API
+  // Enhanced search function with PostGIS distance search
   const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setHasSearched(true);
-    
+    e.preventDefault()
+    setIsLoading(true)
+    setSearchError(null)
+    setHasSearched(true)
+
     try {
-      // Skip API call and just apply local filters to the demo data
-      console.log("Filtering local rides data");
-      
-      // Make sure we have rides data to filter
-      if (rides.length === 0) {
-        generateDemoRides();
+      const searchFilters = {
+        origin: startLocation || undefined,
+        destination: searchQuery || undefined,
+        date: date || undefined,
+        minSeats: minSeats > 1 ? minSeats : undefined,
+        maxPrice: undefined, // Add price filter if needed
+        // Use PostGIS distance search if user location is available
+        userLat: userLocation?.lat,
+        userLng: userLocation?.lng,
+        maxDistanceKm: userLocation ? maxDistance : undefined
+      };
+
+      console.log('🔍 Searching with filters:', searchFilters);
+
+      // Use distance-aware search if location is available, otherwise use basic search
+      const supabaseRides = userLocation ? 
+        await searchRidesWithDistance(searchFilters) : 
+        await searchRides(searchFilters);
+
+      if (supabaseRides && supabaseRides.length > 0) {
+        const displayRides = supabaseRides.map(convertToDisplayRide);
+        setRides(displayRides);
+        setFilteredRides(displayRides);
+        console.log(`Found ${displayRides.length} rides`);
+      } else {
+        setRides([]);
+        setFilteredRides([]);
+        console.log('No rides found');
       }
-      
-      // Apply frontend filters
-      filterRidesLocally(rides);
-      
     } catch (error) {
-      console.error('Error searching for rides:', error);
-      setSearchError('Failed to search rides. Using local filtering instead.');
-      
-      // Fall back to local filtering
-      filterRidesLocally(rides);
+      console.error('Search error:', error);
+      setSearchError('Search failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
   
   // Local filtering for when API is unavailable or for additional frontend filters
-  const filterRidesLocally = (allRides: Ride[]) => {
+  const filterRidesLocally = (allRides: DisplayRide[]) => {
     let filtered = [...allRides];
     
     // Filter by tab
@@ -282,7 +358,7 @@ export default function FindRidePage() {
       filtered = filtered.filter((ride) => !ride.isIntercampus);
     }
     
-    setFilteredRides(filtered);
+    return filtered;
   };
 
   // Handle tab change
@@ -334,11 +410,11 @@ export default function FindRidePage() {
   };
 
   // Add this function to handle ride booking
-  const handleBookRide = (ride: Ride) => {
+  const handleBookRide = (ride: DisplayRide) => {
     try {
       // Get current user info for the booking
       const userInfo = {
-        id: user?.uid || 'demo-user',
+        id: user?.id || 'demo-user',
         name: user?.email?.split('@')[0] || 'Demo User',
         email: user?.email || 'demo@example.edu',
       };
@@ -346,18 +422,12 @@ export default function FindRidePage() {
       // Create a booking object
       const booking = {
         id: `booking-${Date.now()}`,
-        ride_id: ride.id,
         user_id: userInfo.id,
-        user_name: userInfo.name,
-        user_email: userInfo.email,
-        booking_time: new Date().toISOString(),
-        status: 'confirmed',
-        from: ride.from,
-        to: ride.to,
-        date: ride.date,
-        time: ride.time,
-        price: ride.price,
-        driver: ride.driver,
+        ride_id: ride.id,
+        passenger_count: 1,
+        total_cost: ride.price,
+        status: 'pending',
+        created_at: new Date().toISOString(),
       };
       
       // Save booking to local storage
@@ -498,6 +568,26 @@ export default function FindRidePage() {
                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
                     Search Rides
                   </Button>
+                  
+                  {/* Location Status Indicator */}
+                  <div className="mt-4 p-3 rounded-lg border">
+                    {userLocation ? (
+                      <div className="flex items-center text-sm text-green-700 bg-green-50 p-2 rounded">
+                        <MapPin className="h-4 w-4 mr-2" />
+                        <span>📍 Location detected - Distance-based search enabled</span>
+                      </div>
+                    ) : locationError ? (
+                      <div className="flex items-center text-sm text-yellow-700 bg-yellow-50 p-2 rounded">
+                        <MapPin className="h-4 w-4 mr-2" />
+                        <span>⚠️ {locationError}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center text-sm text-gray-500 bg-gray-50 p-2 rounded">
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        <span>🔍 Getting your location for better search results...</span>
+                      </div>
+                    )}
+                  </div>
                 </form>
               </CardContent>
             </Card>
@@ -600,14 +690,6 @@ export default function FindRidePage() {
                               <Users className="h-4 w-4 text-gray-400 mr-2" />
                               <span>{ride.seats} seats available</span>
                             </div>
-                            {ride.pitStop && (
-                              <div className="flex items-center text-sm text-rose-600">
-                                <span className="text-gray-400 mr-2">🍵</span>
-                                <span>
-                                  Pit stop: {ride.pitStop.name} ({ride.pitStop.discount})
-                                </span>
-                              </div>
-                            )}
                           </div>
 
                           <div className="mt-4 flex justify-end">

@@ -4,20 +4,20 @@ import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Calendar, Clock, Users, Coffee, Star, ChevronRight, Search, Check, School, Loader2, Navigation } from "lucide-react"
+import { MapPin, Calendar, Clock, Users, Coffee, Star, ChevronRight, Search, Check, School, Loader2, Navigation, CalendarDays, Zap, Shield } from "lucide-react"
 import RideMap from "@/components/ride-map"
-import RestaurantCard from "@/components/restaurant-card"
-import RecurringRideCard from "@/components/recurring-ride-card"
 import CollegeSelector from "@/components/college-selector"
-import { useCollege, type College } from "@/contexts/college-context"
+import { useCollege } from "@/contexts/college-context"
 import { useAuth } from "@/contexts/auth-context"
-import { toast, useToast } from "@/components/ui/use-toast"
 import { useRouter } from "next/navigation"
 import { findNearbyLocations, getPopularStartingPoints, type Location } from "@/lib/campus-locations"
+import PitStopCard from "@/components/pit-stop-card"
+import { toast } from "@/components/ui/use-toast"
 
 export default function Home() {
   const router = useRouter()
@@ -30,21 +30,62 @@ export default function Home() {
   
   // New state for quick search
   const [startLocation, setStartLocation] = useState("")
-  const [searchDate, setSearchDate] = useState("")
+  const [endLocation, setEndLocation] = useState("")
+  const [date, setDate] = useState("")
+  const [time, setTime] = useState("")
   const [isGettingLocation, setIsGettingLocation] = useState(false)
   const [locationError, setLocationError] = useState("")
   const [nearbyLocations, setNearbyLocations] = useState<Location[]>([])
   const [popularLocations, setPopularLocations] = useState<Location[]>([])
+  const [popularStartingPoints, setPopularStartingPoints] = useState<Location[]>([])
 
   // Load popular locations when college changes
   useEffect(() => {
-    if (selectedCollege?.id) {
-      const locations = getPopularStartingPoints(selectedCollege.id);
-      setPopularLocations(locations);
-    } else {
-      setPopularLocations([]);
+    if (selectedCollege) {
+      // Get popular starting points for the selected college
+      const locations = getPopularStartingPoints();
+      setPopularStartingPoints(locations);
+      
+      // Auto-detect user location if geolocation is available
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            const nearby = findNearbyLocations(latitude, longitude, 10);
+            
+            if (nearby.length > 0) {
+              const closestLocation = nearby[0];
+              setStartLocation(`${closestLocation.name}`);
+            }
+          },
+          (error) => {
+            console.log("Geolocation error:", error.message);
+          }
+        );
+      }
     }
   }, [selectedCollege]);
+
+  // Auto-detect user location for starting point
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const nearby = findNearbyLocations(latitude, longitude, 5);
+          setNearbyLocations(nearby);
+          
+          if (nearby.length > 0) {
+            const closestLocation = nearby[0];
+            setStartLocation(`${closestLocation.name}`);
+          }
+        },
+        (error) => {
+          console.log("Geolocation error:", error.message);
+        }
+      );
+    }
+  }, []);
 
   // Generate popular restaurants data
   const getPopularRestaurants = () => {
@@ -94,13 +135,13 @@ export default function Home() {
         const { latitude, longitude } = position.coords;
         
         // Find nearby locations based on user's coordinates
-        const nearby = findNearbyLocations(latitude, longitude, 10, 5);
+        const nearby = findNearbyLocations(latitude, longitude, 10);
         setNearbyLocations(nearby);
         
         if (nearby.length > 0) {
           // Use the closest location name
           const closestLocation = nearby[0];
-          setStartLocation(`${closestLocation.name} (${closestLocation.distance?.toFixed(1)} mi)`);
+          setStartLocation(`${closestLocation.name}`);
           
           toast({
             title: "Location Found",
@@ -143,7 +184,7 @@ export default function Home() {
     // Prepare URL params for redirection to find page
     const params = new URLSearchParams();
     if (startLocation) params.append('from', startLocation);
-    if (searchDate) params.append('date', searchDate);
+    if (date) params.append('date', date);
     
     // In a full implementation, redirect to find page with search parameters
     router.push(`/find?${params.toString()}`);
@@ -151,7 +192,7 @@ export default function Home() {
     // Toast for the demo
     toast({
       title: "Searching Rides",
-      description: `Looking for rides from: ${startLocation || "Any location"}${searchDate ? `, on ${searchDate}` : ""}`,
+      description: `Looking for rides from: ${startLocation || "Any location"}${date ? `, on ${date}` : ""}`,
     });
   };
 

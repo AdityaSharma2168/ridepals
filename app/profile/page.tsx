@@ -172,7 +172,7 @@ export default function ProfilePage() {
             <CardHeader className="text-center">
               <div className="flex justify-center mb-4">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage src={user?.photoURL || ""} alt={userData?.first_name || "User"} />
+                  <AvatarImage src={user?.user_metadata?.avatar_url || ""} alt={userData?.first_name || "User"} />
                   <AvatarFallback className="text-2xl">
                     {userData?.first_name?.charAt(0) || user?.email?.charAt(0) || "U"}
                   </AvatarFallback>
