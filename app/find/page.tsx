@@ -14,7 +14,7 @@ import { useCollege } from "@/contexts/college-context"
 import { useAuth } from "@/contexts/auth-context"
 import { format } from "date-fns"
 import { toast } from "@/components/ui/use-toast"
-import { supabase, searchRides, searchRidesWithDistance } from "@/lib/supabase/client"
+import { supabase, searchRides, searchRidesWithDistance, createBooking } from "@/lib/supabase/client"
 
 // Type for ride data from Supabase
 type Ride = {
@@ -127,14 +127,16 @@ export default function FindRidePage() {
       console.log("Fetching rides from Supabase...");
       
       const supabaseRides = await searchRides({
-        // Add any initial filters here
+        excludeUserId: user?.id, // Exclude current user's own rides
       });
       
       if (supabaseRides && supabaseRides.length > 0) {
-        const displayRides = supabaseRides.map(convertToDisplayRide);
+        // Filter out rides with 0 available seats
+        const availableRides = supabaseRides.filter(ride => ride.available_seats > 0);
+        const displayRides = availableRides.map(convertToDisplayRide);
         setRides(displayRides);
         setFilteredRides(displayRides);
-        console.log(`Loaded ${displayRides.length} rides from Supabase`);
+        console.log(`Loaded ${displayRides.length} available rides from Supabase`);
       } else {
         console.log("No rides found in Supabase, using demo data");
         generateDemoRides();
@@ -263,6 +265,7 @@ export default function FindRidePage() {
         date: date || undefined,
         minSeats: minSeats > 1 ? minSeats : undefined,
         maxPrice: undefined, // Add price filter if needed
+        excludeUserId: user?.id, // Exclude current user's own rides
         // Use PostGIS distance search if user location is available
         userLat: userLocation?.lat,
         userLng: userLocation?.lng,
@@ -410,69 +413,64 @@ export default function FindRidePage() {
   };
 
   // Add this function to handle ride booking
-  const handleBookRide = (ride: DisplayRide) => {
+  const handleBookRide = async (ride: DisplayRide) => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to book a ride.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      // Get current user info for the booking
-      const userInfo = {
-        id: user?.id || 'demo-user',
-        name: user?.email?.split('@')[0] || 'Demo User',
-        email: user?.email || 'demo@example.edu',
-      };
+      console.log('🔄 Booking ride:', ride.id);
       
-      // Create a booking object
-      const booking = {
-        id: `booking-${Date.now()}`,
-        user_id: userInfo.id,
+      const result = await createBooking({
         ride_id: ride.id,
-        passenger_count: 1,
-        total_cost: ride.price,
-        status: 'pending',
-        created_at: new Date().toISOString(),
-      };
-      
-      // Save booking to local storage
-      const existingBookingsJSON = localStorage.getItem('rideBookings');
-      const existingBookings = existingBookingsJSON ? JSON.parse(existingBookingsJSON) : [];
-      localStorage.setItem('rideBookings', JSON.stringify([...existingBookings, booking]));
-      
-      // Update ride's available seats in local data
+        rider_id: user.id,
+        seats_booked: 1, // Book 1 seat by default
+      });
+
+      if (result.error) {
+        toast({
+          title: "Booking Failed",
+          description: result.error,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Update the local ride data to reflect the booking
       const updatedRides = rides.map(r => {
         if (r.id === ride.id) {
           return { ...r, seats: r.seats - 1 };
         }
         return r;
       });
-      
-      // Update the rides state
       setRides(updatedRides);
-      
-      // Update filtered rides
+
+      // Update filtered rides and remove if no seats left
       const updatedFilteredRides = filteredRides.map(r => {
         if (r.id === ride.id) {
           return { ...r, seats: r.seats - 1 };
         }
         return r;
       });
-      
-      // Remove the ride from filtered rides if no seats left
-      const newFilteredRides = updatedFilteredRides.filter(r => r.seats > 0);
-      
-      setFilteredRides(newFilteredRides);
-      
+      setFilteredRides(updatedFilteredRides.filter(r => r.seats > 0));
+
       // Show success toast
       toast({
-        title: "Ride Booked Successfully!",
-        description: `Your ride from ${ride.from} to ${ride.to} has been booked.`,
-        duration: 5000,
+        title: "Ride Booked Successfully! 🎉",
+        description: `Your ride from ${ride.from} to ${ride.to} has been confirmed.`,
       });
       
     } catch (error) {
-      console.error('Error booking ride:', error);
+      console.error('💥 Error booking ride:', error);
       toast({
         title: "Error Booking Ride",
         description: "There was an error booking this ride. Please try again.",
         variant: "destructive",
-        duration: 5000,
       });
     }
   };

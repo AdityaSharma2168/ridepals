@@ -443,9 +443,14 @@ export const searchRides = async (filters: any) => {
     .from('rides')
     .select(`
       *,
-      driver:users!rides_driver_id_fkey(*)
+      driver:users!fk_driver(*)
     `)
     .eq('status', 'active')
+  
+  // Exclude current user's own rides
+  if (filters.excludeUserId) {
+    query = query.neq('driver_id', filters.excludeUserId)
+  }
   
   // Text-based location search
   if (filters.origin) {
@@ -566,3 +571,76 @@ export const searchRidesWithDistance = async (filters: {
     })
   }
 }
+
+// Booking functions
+export const createBooking = async (bookingData: {
+  ride_id: string;
+  rider_id: string;
+  seats_booked: number;
+}) => {
+  try {
+    console.log('🔄 Creating booking...', bookingData);
+
+    // First, check if the ride has enough available seats
+    const { data: ride, error: rideError } = await supabase
+      .from('rides')
+      .select('available_seats, total_seats, status')
+      .eq('id', bookingData.ride_id)
+      .single();
+
+    if (rideError) {
+      console.error('❌ Error fetching ride:', rideError);
+      return { error: 'Failed to fetch ride information', data: null };
+    }
+
+    if (!ride) {
+      return { error: 'Ride not found', data: null };
+    }
+
+    if (ride.status !== 'active') {
+      return { error: 'This ride is no longer available', data: null };
+    }
+
+    if (ride.available_seats < bookingData.seats_booked) {
+      return { error: `Only ${ride.available_seats} seat(s) available`, data: null };
+    }
+
+    // Create the booking
+    const { data: booking, error: bookingError } = await supabase
+      .from('bookings')
+      .insert({
+        ride_id: bookingData.ride_id,
+        rider_id: bookingData.rider_id,
+        seats_booked: bookingData.seats_booked,
+        status: 'confirmed'
+      })
+      .select()
+      .single();
+
+    if (bookingError) {
+      console.error('❌ Error creating booking:', bookingError);
+      return { error: bookingError.message || 'Failed to create booking', data: null };
+    }
+
+    // Update the ride's available seats
+    const newAvailableSeats = ride.available_seats - bookingData.seats_booked;
+    const { error: updateError } = await supabase
+      .from('rides')
+      .update({ available_seats: newAvailableSeats })
+      .eq('id', bookingData.ride_id);
+
+    if (updateError) {
+      console.error('❌ Error updating ride seats:', updateError);
+      // Try to rollback the booking
+      await supabase.from('bookings').delete().eq('id', booking.id);
+      return { error: 'Failed to update seat availability', data: null };
+    }
+
+    console.log('✅ Booking created successfully:', booking);
+    return { error: null, data: booking };
+
+  } catch (error: any) {
+    console.error('💥 Unexpected error in createBooking:', error);
+    return { error: error.message || 'Unexpected error occurred', data: null };
+  }
+};
